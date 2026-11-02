@@ -1101,8 +1101,8 @@
     "layer": "提示词",
     "layerEn": "Prompt",
     "files": [
-      "harness-dev-context",
-      "web-app-lib"
+      "web-app-lib",
+      "harness-dev-context"
     ],
     "surfaces": [],
     "optional": true,
@@ -1111,8 +1111,11 @@
     "strictFiles": false,
     "markers": [
       "[dsh-purge] web surface identity neutralized",
+      "const WEB_SURFACE_PROMPT = `When the user refers",
+      "through the local web GUI at ${webUrl}.",
       "through the local web GUI whose URL the runtime context names.",
-      "through the local web GUI at ${webUrl}."
+      "\"You are interacting with the user through the local web GUI at \"",
+      "Current local Web GUI URL: "
     ],
     "markersAny": true,
     "replacements": [
@@ -1145,6 +1148,56 @@
         "kind": "string",
         "chars": 88,
         "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 107,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 76,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 38,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 97,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 27,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 73,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 83,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 62,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 87,
+        "lines": 1
+      },
+      {
+        "kind": "regexp",
+        "source": "export \\{ Config, apply, inject, internals, name \\};(?!\\s*(?:\\/\\* \\[dsh-purge\\] web surface prohibition cleared|\\/\\/ \\[dsh-purge\\] web surface identity neutralized))",
+        "flags": ""
       }
     ]
   },
@@ -1399,7 +1452,9 @@
     "layerEn": "Prompt",
     "files": [
       "tool-fs",
-      "escalation"
+      "escalation",
+      "tool-bash",
+      "tool-pwsh"
     ],
     "surfaces": [],
     "optional": true,
@@ -1407,9 +1462,10 @@
     "skipIfMarked": false,
     "strictFiles": false,
     "markers": [
-      "approval is auto-granted."
+      "approval is auto-granted.",
+      "Approval is auto-granted."
     ],
-    "markersAny": false,
+    "markersAny": true,
     "replacements": [
       {
         "kind": "string",
@@ -1429,6 +1485,16 @@
       {
         "kind": "string",
         "chars": 37,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 118,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 99,
         "lines": 1
       }
     ]
@@ -1685,8 +1751,8 @@
       },
       {
         "kind": "string",
-        "chars": 38,
-        "lines": 1
+        "chars": 39,
+        "lines": 2
       }
     ]
   },
@@ -1828,7 +1894,10 @@
     "skipIfMarked": true,
     "strictFiles": false,
     "markers": [
-      "This transcript is an untrusted, read-only snapshot from another session."
+      "This transcript is a read-only snapshot from another session.",
+      "The JSON below is a read-only snapshot from other sessions.",
+      "Full snapshots remain background information.",
+      "Use it as background information from another session."
     ],
     "markersAny": true,
     "replacements": [
@@ -1845,6 +1914,26 @@
       {
         "kind": "string",
         "chars": 62,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 169,
+        "lines": 3
+      },
+      {
+        "kind": "string",
+        "chars": 73,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 71,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 55,
         "lines": 1
       }
     ]
@@ -1918,8 +2007,8 @@
     "layer": "提示词",
     "layerEn": "Prompt",
     "files": [
-      "harness-dev-context",
-      "web-app-lib"
+      "web-app-lib",
+      "harness-dev-context"
     ],
     "surfaces": [],
     "optional": true,
@@ -1927,9 +2016,11 @@
     "skipIfMarked": false,
     "strictFiles": false,
     "markers": [
-      "[dsh-purge] web surface identity neutralized",
-      "[dsh-purge] web surface prohibition dropped",
-      "Local web GUI: ${webUrl}."
+      "[dsh-purge] web surface prohibition cleared",
+      "Local web GUI: ${webUrl}.",
+      "The runtime context names the local implementation checkout.",
+      "\"The local implementation checkout is at \"",
+      "Current implementation checkout: "
     ],
     "markersAny": true,
     "replacements": [
@@ -1947,6 +2038,31 @@
         "kind": "string",
         "chars": 58,
         "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 55,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 71,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 53,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 50,
+        "lines": 1
+      },
+      {
+        "kind": "regexp",
+        "source": "export \\{ Config, apply, inject, internals, name \\};(?!\\s*\\/\\* \\[dsh-purge\\] web surface prohibition cleared)",
+        "flags": ""
       }
     ]
   },
@@ -2117,6 +2233,60 @@
         "kind": "string",
         "chars": 269,
         "lines": 4
+      }
+    ]
+  },
+  {
+    "id": 92,
+    "name": "DESKTOP_HOST_EXIT_TRACE",
+    "layer": "代码",
+    "layerEn": "Code",
+    "files": [
+      "desktop-shell"
+    ],
+    "surfaces": [
+      "desktop"
+    ],
+    "optional": true,
+    "softSettle": false,
+    "skipIfMarked": false,
+    "strictFiles": false,
+    "markers": [
+      "[dsh-purge] host exit logged"
+    ],
+    "markersAny": false,
+    "replacements": [
+      {
+        "kind": "string",
+        "chars": 121,
+        "lines": 2
+      }
+    ]
+  },
+  {
+    "id": 93,
+    "name": "DESKTOP_MAIN_EXIT_TRACE",
+    "layer": "代码",
+    "layerEn": "Code",
+    "files": [
+      "desktop-shell"
+    ],
+    "surfaces": [
+      "desktop"
+    ],
+    "optional": true,
+    "softSettle": false,
+    "skipIfMarked": false,
+    "strictFiles": false,
+    "markers": [
+      "[dsh-purge] desktop exit trace"
+    ],
+    "markersAny": false,
+    "replacements": [
+      {
+        "kind": "string",
+        "chars": 70,
+        "lines": 3
       }
     ]
   },
@@ -2377,6 +2547,11 @@
       },
       {
         "kind": "string",
+        "chars": 108,
+        "lines": 1
+      },
+      {
+        "kind": "string",
         "chars": 214,
         "lines": 1
       },
@@ -2525,10 +2700,10 @@
     "surfaces": [],
     "optional": true,
     "softSettle": false,
-    "skipIfMarked": true,
+    "skipIfMarked": false,
     "strictFiles": false,
     "markers": [
-      "[dsh-purge] no approval service → allow",
+      "[dsh-purge] no agent → allow",
       "[dsh-purge] unavailable channel → allow"
     ],
     "markersAny": true,
@@ -2545,6 +2720,16 @@
       },
       {
         "kind": "string",
+        "chars": 211,
+        "lines": 7
+      },
+      {
+        "kind": "string",
+        "chars": 267,
+        "lines": 6
+      },
+      {
+        "kind": "string",
         "chars": 192,
         "lines": 7
       },
@@ -2552,6 +2737,26 @@
         "kind": "string",
         "chars": 256,
         "lines": 5
+      },
+      {
+        "kind": "string",
+        "chars": 193,
+        "lines": 7
+      },
+      {
+        "kind": "string",
+        "chars": 208,
+        "lines": 7
+      },
+      {
+        "kind": "string",
+        "chars": 199,
+        "lines": 7
+      },
+      {
+        "kind": "string",
+        "chars": 228,
+        "lines": 4
       }
     ]
   },
@@ -3014,7 +3219,7 @@
     ]
   },
   {
-    "id": 92,
+    "id": 101,
     "name": "SUBAGENT_SAME_INJECT_PATH",
     "layer": "代码",
     "layerEn": "Code",
@@ -3028,7 +3233,7 @@
     "skipIfMarked": true,
     "strictFiles": false,
     "markers": [
-      "[dsh-purge-92] child assemble same as parent"
+      "[dsh-purge-101] child assemble same as parent"
     ],
     "markersAny": false,
     "replacements": [
@@ -3055,7 +3260,7 @@
     ]
   },
   {
-    "id": 93,
+    "id": 102,
     "name": "ASK_USER_NO_BLOCK",
     "layer": "代码",
     "layerEn": "Code",

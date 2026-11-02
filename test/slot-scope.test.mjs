@@ -37,7 +37,11 @@ const PREFIX = /^(dsh-purge|redteam)([-/]|$)/;
 
 test("每个宿主槽位注册都用本插件前缀的 id/key，不裸占官方 id", () => {
   const slots = registeredSlots(clientSrc);
-  assert.ok(slots.length >= 3, `expected >= 3 slot registrations, got ${slots.length}`);
+  // 1.1.90 合并后：上游 #208 把 undo 按钮挪出 conversation.input.right
+  // （Android WebView composer 抛错会卸载输入框），rewind 改走
+  // REWIND_HOST_ATTR fixed 宿主 + createPortal，不再注册槽位。
+  // 剩余注册：conversation.chat.node 的 command-input + shell.overlay 的 dock。
+  assert.ok(slots.length >= 2, `expected >= 2 slot registrations, got ${slots.length}`);
   for (const body of slots) {
     const id = /\bid:\s*["']([^"']+)["']/.exec(body);
     const key = /\bkey:\s*["']([^"']+)["']/.exec(body);

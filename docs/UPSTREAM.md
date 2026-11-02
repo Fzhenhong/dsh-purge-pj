@@ -90,7 +90,7 @@
 | `#89` | `SYSTEM_FIELD_EXTRACT` | `agent-loop` | 把 `role: "system"` 消息抽到请求的独立 `system` 字段，不再混在对话历史里被当成可讨论的内容 |
 | `#90` | `OPENAI_NATIVE_SYSTEM_ROLE` | `pi-ai-completions` | 走 `/chat/completions` 的原生 system 槽，不再塞进最后一条 user |
 | `#91` | `ANTHROPIC_NATIVE_PARAMS_SYSTEM` | `pi-ai-anthropic-messages` | 同上，走 `/messages` 的 `params.system` |
-| `#92` | `SUBAGENT_SAME_INJECT_PATH` | `subagent` / `subagent-types` | 子代理创建时立刻挂 `globalThis.__dshPurgePrepareAssemble` 并继承父会话权限，不再绕过注入 |
+| `#101` | `SUBAGENT_SAME_INJECT_PATH` | `subagent` / `subagent-types` | 子代理创建时立刻挂 `globalThis.__dshPurgePrepareAssemble` 并继承父会话权限，不再绕过注入 |
 
 `#90` / `#91` 在本机原本一辈子打不上，因为 `listPiAiApiFiles()` 只在
 `aiBase/..`、`aiBase/dsh/node_modules`、`aiBase/../@deepseek-ai/dsh/node_modules`
@@ -101,7 +101,7 @@
 
 ### 3. `luowang-ui/dsh-purge-plus` — 移植了 1 条补丁
 
-**吸收了（提交 `4de57e5`）：`#93` `ASK_USER_NO_BLOCK`**（本仓库新编号）。
+**吸收了（提交 `4de57e5`）：`#102` `ASK_USER_NO_BLOCK`**（本仓库新编号，1.1.90 合并后从 #93 顺延改名避免与上游 DESKTOP_MAIN_EXIT_TRACE 撞号）。
 
 ```js
 // dsh-tool-ask-user/lib/index.js:181

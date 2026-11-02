@@ -21,5 +21,7 @@ test("main 进程的识别排除渲染/GPU 子进程（--type=）", () => {
 test("挪包失败时也要把原版拉起来，不留空桌面", () => {
   const relaunch = ASAR_SWAP_PS1.split("Start-Process -FilePath $ExePath").length - 1;
   assert.equal(relaunch, 2, "成功/失败两个分支都要重启 exe");
-  assert.match(ASAR_SWAP_PS1, /move failed; relaunching original app/);
+  // 1.1.90 合并后 c63ba4a 把裸 console 输出函数化成 Write-SwapLog，
+  // 失败分支的提示语变成了 'move failed: ' + $moveErr + '; relaunching original app …'。
+  assert.match(ASAR_SWAP_PS1, /move failed: ' \+ \$moveErr \+ '; relaunching original app/);
 });
