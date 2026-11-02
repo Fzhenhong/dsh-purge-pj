@@ -105,26 +105,35 @@ test("RegExp pattern 只使用 global 语义之外的稳定 flags", () => {
 
 test("契约表统计与源码一致", () => {
   const withMarkers = contract.filter((entry) => entry.markers.length > 0).length;
-  assert.equal(withMarkers, 88, "带 marker 的补丁数变了");
-  assert.equal(contract.filter((entry) => entry.optional).length, 50, "optional 补丁数变了");
+  // 90 → 93：吸收上游 #188/#194 通用部分新增 #98（沙箱策略去品牌，带 marker）、
+  // #99（技能徽章描述，带 marker）、#100（host 信号退出日志，带 marker）。
+  assert.equal(withMarkers, 93, "带 marker 的补丁数变了");
+  // 50 → 53：上面三条全部 optional。
+  assert.equal(contract.filter((entry) => entry.optional).length, 53, "optional 补丁数变了");
   const regex = contract.reduce((sum, entry) => sum + entry.replacements.filter((item) => item.kind === "regexp").length, 0);
-  assert.equal(regex, 6, "RegExp 形式的 replacement 数变了");
+  // 6 → 7：吸收上游 #188 后 #77（REWIND_DROP_SENT_ON_APPEND）从「写死 5 行 + rc.2 补丁行」
+  // 两条字面量改成一条锚首尾 + 非贪婪窗口的正则，官方在中间插行也照样命中。
+  assert.equal(regex, 7, "RegExp 形式的 replacement 数变了");
   const anyMarkers = contract.filter((entry) => entry.markersAny).length;
-  assert.equal(anyMarkers, 21, "markersAny 的补丁数变了");
+  // #94/#95 的补丁内容官方 0.2.1-rc.3 已经自己实现了（只是没带我们的注释），
+  // 所以两条都加了「结果态」标记并改成 markersAny —— 否则它们会被误判成 drifted。
+  assert.equal(anyMarkers, 23, "markersAny 的补丁数变了");
 });
 
 test("layer 分布稳定（新增补丁要显式更新这张表）", () => {
   const counts = new Map();
   for (const entry of contract) counts.set(layerKey(entry), (counts.get(layerKey(entry)) ?? 0) + 1);
-  assert.equal(counts.get("提示词|Prompt"), 25);
-  assert.equal(counts.get("代码|Code"), 53);
+  // 25 → 27：#98/#99 都是提示词层；#100 落在代码层（55 → 56）。
+  assert.equal(counts.get("提示词|Prompt"), 27);
+  assert.equal(counts.get("代码|Code"), 56);
   assert.equal(counts.get("工具|Tools"), 8);
   assert.equal(counts.get("0.1.5 兼容|0.1.5"), 1);
   assert.equal(counts.get("0.2.0 兼容|0.2.0"), 2);
 });
 
-test("desktop-only 补丁恰好只有 5 条且都声明了 surfaces", () => {
+test("desktop-only 补丁恰好只有 6 条且都声明了 surfaces", () => {
   const desktop = contract.filter((entry) => entry.surfaces.includes("desktop"));
-  assert.equal(desktop.length, 5);
+  // 5 → 6：吸收上游 #194 后新增 #100（host 信号退出日志），同样只对桌面面生效。
+  assert.equal(desktop.length, 6);
   for (const entry of desktop) assert.deepEqual(entry.surfaces, ["desktop"]);
 });

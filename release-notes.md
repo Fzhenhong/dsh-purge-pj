@@ -1,3 +1,293 @@
+# 1.1.88
+
+## 中文
+
+- 版本 **1.1.88**。吸收上游 **1.1.86（#197 / #198）** 的两条回收流程修复，这两条
+  正是本机踩过的坑：`--apply` 后自动重启，detached 子进程接管 server，父进程
+  250ms 就退出，关窗/关终端都杀不到它；下一次 `dsh web` 在 webserver 插件绑端口时
+  撞 `EADDRINUSE`，而 0.2.x 把 required 插件激活失败当 **fatal**，宿主直接起不来。
+- **web 孤儿 server 回收（新增 4 个模块）**：
+  - `lib/web-reclaim.js`：pid 记录文件 `$DSH_HOME/dsh-purge/web-server-<port>.json`、
+    按端口反查监听 pid（win32 `netstat -ano` / darwin+linux `lsof`）、
+    `looksLikeDshWeb()` 只认 `@deepseek-ai/dsh/lib/bin.js … web` 的命令行。
+    关键判据：**记录里的 pid 命令行拿不到时，必须证明它仍占着端口才杀** ——
+    记录早于进程退出时，pid 被系统复用后盲杀会打到无关进程。
+    杀不掉就保留记录下次再试，只有确认进程已不在才清记录；`waitGone()` 用
+    `Atomics.wait` 忙等，因为 `taskkill` 返回不代表端口已释放。
+  - `lib/web-preflight-entry.js`：侧车脚本，在 **Cordis 激活之前**做一次回收。
+  - `lib/bin-preflight.js`：把侧车复制到宿主 `lib/dsh-purge-web-preflight.js` 并在
+    `bin.js` 顶部加一行 import（形态与 hide-console 一致，同样跳过源码部署的
+    `apps/cli/lib` 与封死的 asar）。
+  - `lib/restart-web.js`：起 server 后立刻写 pid 记录，解析出 URL 时再补写一次；
+    `killOldServer()` 增加按端口兜底，清掉旧版本留下、没有 pid 记录的孤儿。
+- **桌面换包先杀 Electron main（#197b）**：`ASAR_SWAP_PS1` 现在先按安装根路径 +
+  非 `--type=` 识别并 kill Electron main，再扫安装目录其余进程。main 是唯一会弹
+  「host stopped」对话框的进程，先杀它就不会出现「host 死了、main 半死、asar 没动」
+  的状态。挪包失败的分支补上 `Start-Process -FilePath $ExePath`：至少把原版拉起来，
+  不再把用户扔在空桌面上；失败原因写进 `%TEMP%\dsh-purge-desktop.log`。
+  `ASAR_SWAP_PS1` 改为导出，新增 `test/desktop-asar-swap.test.js` 守住顺序。
+- **重启提示**：`scheduleRestart()` 现在会打印「已在后台重启 dsh web，关掉这个窗口
+  不会停它」，避免把提示符返回误判成程序已退出，然后立刻再开一个 → 又撞 EADDRINUSE。
+- **宿主版本分档**：`hostCompat()` 新增 `level`（`exact` / `prerelease` / `patch` /
+  `minor` / `major` / `unknown`），只有 `exact` 与 `prerelease` 算适配。声明 rc.2、
+  在跑 rc.3/rc.5 不再画红，改为中性色提示「只差预发布/补丁号，官方原文未变」；
+  真跨 minor/major 才报「未适配」。`gatherState()` 新增 `host_compat_level`。
+- **selfcheck 误报清理**：注入文件行改用 `looksLikePluginDefault()` 判定，标记计数
+  容忍宿主写入的零宽字符（本机 `<project` + U+200B + `instructions>`）；shim 行按
+  「本安装实际发了几个启动器」判；Qoder 行跨盘扫 `Qoder CN` 安装根（本机在 D 盘，
+  且 0.5.1 在根目录而非 `.qoder-versions/`）。
+- **桌面宿主 pi-ai 补丁误判 na**：`keepSurfaceFile()` 原按**当前进程** surface 判区，
+  在 web 会话里对桌面 aiBase 求值时把桌面文件当区外过滤，`#47/#49/#57/#90/#91`
+  五条假 na。改走 `allowTargetForPatch()`（按正在算的那份宿主判区）。
+- 测试：**337 条全过**（新增 `test/host-compat.test.mjs` 5 条、
+  `test/desktop-asar-swap.test.js` 3 条、`test/web-reclaim.test.js` 12 条）。
+
+## English
+
+- Version **1.1.88**. Absorbs upstream **1.1.86 (#197 / #198)** — the two reclaim
+  fixes behind a failure mode this machine actually hit: after `--apply` the
+  auto-restart hands the server to a detached child and the foreground process
+  exits 250 ms later, so closing the window or the terminal kills nothing. The
+  next `dsh web` then collides on the port, and 0.2.x treats a required-plugin
+  activation failure as **fatal** — the host never boots.
+- **Web orphan reclaim (4 new modules)**: `lib/web-reclaim.js` keeps
+  `$DSH_HOME/dsh-purge/web-server-<port>.json`, resolves listening pids by port
+  (`netstat -ano` on win32, `lsof` elsewhere) and only treats a command line as
+  ours when it matches `@deepseek-ai/dsh/lib/bin.js … web`. When the recorded
+  pid's command line is unreadable it must **still own the port** before being
+  killed — a stale record plus pid reuse would otherwise hit an unrelated
+  process. Unkillable pids keep their record for the next boot; the record is
+  cleared only once the process is confirmed gone. `waitGone()` busy-waits
+  because `taskkill` returning does not mean the port is free.
+  `lib/web-preflight-entry.js` (sidecar) and `lib/bin-preflight.js` (copies it to
+  the host's `lib/` and adds one import line at the top of `bin.js`, before
+  Cordis activates) install the hook; `lib/restart-web.js` writes the pid record
+  on spawn and again once the URL is parsed, and its `killOldServer()` gained a
+  port-based fallback for orphans left by older versions.
+- **Desktop asar swap kills Electron main first (#197b)**: main is the only
+  process that raises the "host stopped" dialog, so killing it first avoids the
+  half-dead state. When the move still fails, the original app is relaunched
+  instead of leaving an empty desktop, and the reason is appended to
+  `%TEMP%\dsh-purge-desktop.log`. `ASAR_SWAP_PS1` is exported now.
+- **Host version tiering**: `hostCompat()` returns `level` and only `exact` /
+  `prerelease` count as compatible, so declaring rc.2 while running rc.3/rc.5 no
+  longer shows red; real minor/major jumps still do.
+- Tests: **337 passing**.
+
+# 1.1.87
+
+## 中文
+
+- 版本 **1.1.87**。Qoder CN 升到 **0.5.1**（2026-10-30 构建，electron 43.1.1）之后，
+  Qoder 那条线整套判据失效：`--check` / `--verify` 对着 `.qoder-versions/0.4.11`
+  报 `state: "current"`，而真正在跑的 0.5.1 一个字没打。三处根因逐个修掉。
+- **安装发现：根目录才是当前版本**。0.4.x 版本都装在 `.qoder-versions/<版本>/`，
+  脚本也只扫那里；0.5.1 改成根目录即当前版本（版本号在
+  `resources/build-manifest.json` 的 `productVersion`），旧目录里只剩历史版本 ——
+  于是「查到了、查的是旧的」。新增 `readRootVersion()` / `cmpVersion()` /
+  `listInstalls()`，根安装与 `.qoder-versions/*` 都算候选、按数字段比版本号取最大，
+  `findLatestVersion()` 改用它。`--check` / `--verify` / `--force` / `--force-inplace`
+  全部走这条发现逻辑。
+- **补丁路径：换表项，不再按 wrapper 反推调用点**。0.5.1 的混淆器不再有唯一全局
+  wrapper：0.4.11 的 `n(t,x)=_(t-233,x)` 消失了，实际是 `c(t,x){return x0(x- -271,t)}`
+  —— 索引在**第二参数**；而且同名 wrapper 海量（`e` 5005 个定义、`x` 5625、`n` 2300、
+  `r` 1785、`a` 1088…，188 个名字里只有 23 个唯一定义）。按 wrapper 反推会命中一堆
+  假点：`r(48676,27524)` 落在 ajv 的 `instancePath` 上、`c(35574,26658)` 落在
+  i18n 文案表里。
+  破局点是**三个提示词在表里就是整段的、且每个表项全表唯一**（`main_coding`
+  idx 26544 / 3008 字符、`desktop_instructions` idx 50685 / 540 字符、`persona`
+  idx 35703 / 15317 字符；0.4.11 侧是 39220 / 50697 / 26220，同样整段同样唯一）。
+  新增 `encodeWithCharset(text, CS)`（同一套 65 字符 charset 编回 base64，往返校验）
+  与 `splitTableBody(body)`（按 `","` 切，charset 里没有 `"` 也没有 `,`，安全），
+  `patchMain()` 改成：校验「表项唯一 + 编码往返一致 + 原文出现次数恰为 1」之后
+  `split(raw).join(enc)`。**集群无关** —— 不必知道谁在引用这条表项。
+- **旋转 IIFE 默认不跑**。`})(C00,243580)` 那个 IIFE 是
+  `for(;;) try { ...parseInt 校验和... } catch { t.push(t.shift()) }`，旋转 243580 次 ×
+  57809 项；校验和一旦永不成立就是**挂死**（实测把 `--check` 挂住 10 分钟以上）。
+  它只对旧的「按索引找调用点」路径有用（把表原地旋转让 `n(T)` 落到正确表项），
+  换表项之后表项内容与顺序无关，所以默认不跑；需要旧路径时
+  `QODER_PURGE_ROTATE=1` 显式打开。
+- **换 asar：隔离失败自动退回 in-place**。0.5.1 的 `app.asar` 常被一个没有
+  `FILE_SHARE_DELETE` 的句柄捏着，`taskkill` 掉 `Qoder CN.exe` 也未必立刻释放，
+  `swapAsarIsolated()` 的 rename 直接 `EBUSY`。`cmdPatch()` 现在捕获
+  `abort-busy isolate live asar failed` 并自动转 `cmdInplaceSwap()`（从 0 覆写 +
+  `ftruncate` + `fsync` + 回读校验），**只在这一种错误上退回**，其余错误照常抛。
+  `--force-inplace` 手动入口保留。
+- **错误信息带路径**：打开 asar 失败时把「选中了哪一份安装」写进错误
+  （`cannot open asar for <版本>: <路径>`）—— 安装发现出过假绿，没有路径就看不出选错了谁。
+- 新增 `test/qoder-install-discovery.test.mjs`（5 条）：根安装被当候选、
+  `cmpVersion` 数字段比较、补丁路径必须用 `encodeWithCharset` / `splitTableBody`
+  且旧的字面量替换必须已消失、旋转 IIFE 由 `QODER_PURGE_ROTATE` 把关、隔离失败退回
+  `cmdInplaceSwap`、合成表项编码往返一致且结果不含 `"` / `,`。
+- `docs/qoder-sync.md` 补三节「Qoder 0.5.1 之后的三个结构变化」，把上面这些坑与
+  实测输出写进契约文档。`npm test` **320 条全过**。
+
+## English
+
+- Version **1.1.87**. Qoder CN moved to **0.5.1** (build 2026-10-30, electron 43.1.1)
+  and the whole Qoder-side contract went stale: `--check` / `--verify` reported
+  `state: "current"` against `.qoder-versions/0.4.11` while the live 0.5.1 install
+  was untouched. Three root causes, three fixes.
+- **Install discovery: the root directory is the current version.** 0.4.x kept each
+  version under `.qoder-versions/<version>/`, which is all the script scanned; 0.5.1
+  installs in place at the root (version in `resources/build-manifest.json` →
+  `productVersion`) and leaves only historical versions in `.qoder-versions`. Added
+  `readRootVersion()` / `cmpVersion()` / `listInstalls()`; `findLatestVersion()` now
+  considers both locations and picks the highest numeric version.
+- **Patching: replace the string-table entry, stop reverse-engineering wrapper call
+  sites.** 0.5.1 no longer has a single global wrapper (0.4.11's `n(t,x)=_(t-233,x)`
+  is gone; the real one is `c(t,x){return x0(x- -271,t)}` with the index in the
+  **second** argument), and wrapper names collide massively (`e` has 5005
+  definitions, `x` 5625, `n` 2300, `r` 1785, `a` 1088; of 188 distinct names only 23
+  are uniquely defined). Reverse-engineering hits decoys: `r(48676,27524)` lands in
+  ajv's `instancePath`, `c(35574,26658)` in an i18n string table.
+  The way through: **all three prompts are stored as whole table entries and each
+  entry is unique in the table** (`main_coding` idx 26544 / 3008 chars,
+  `desktop_instructions` idx 50685 / 540 chars, `persona` idx 35703 / 15317 chars;
+  0.4.11 uses 39220 / 50697 / 26220, same shape). Added `encodeWithCharset()` and
+  `splitTableBody()`; `patchMain()` now verifies "entry unique + encode roundtrip +
+  exactly one occurrence" and does `split(raw).join(enc)`. **Cluster-agnostic** — no
+  need to know who references the entry.
+- **The rotation IIFE no longer runs by default.** `})(C00,243580)` is a
+  `for(;;) try { ...checksum... } catch { t.push(t.shift()) }` loop: 243580 rotations
+  over 57809 entries, i.e. a hang if the checksum never holds (it hung `--check` for
+  over 10 minutes in testing). It only served the old index-based path; opt in with
+  `QODER_PURGE_ROTATE=1`.
+- **Swapping the asar: fall back to in-place automatically.** 0.5.1's `app.asar` is
+  often held by a handle without `FILE_SHARE_DELETE`, so `swapAsarIsolated()`'s
+  rename fails with `EBUSY` even after `taskkill`. `cmdPatch()` now catches
+  `abort-busy isolate live asar failed` and switches to `cmdInplaceSwap()` (overwrite
+  from offset 0 + `ftruncate` + `fsync` + read-back verify), and only for that error.
+- Added `test/qoder-install-discovery.test.mjs` (5 cases) and documented the three
+  structural changes in `docs/qoder-sync.md`. `npm test` **320 passing**.
+
+# 1.1.86
+
+## 中文
+
+- 版本 **1.1.86**。第二轮 GitHub 生态巡检：把 `dongliuwuzhong-arch/DSH-purge`、
+  `Crow-purge`、`54zhien/dsh-purge-plus`、`555bbbAAA/dsh-purge`、`realMisakaMikoto/dsh-purge`
+  五个衍生仓库里有价值、本仓库又确实缺的能力，按本仓库口径重写后整合进来。
+- **原子写带 rename 退避重试**（吸收 `DSH-purge/lib/atomic-io.js`）：
+  `atomicWriteSync` / `atomicWriteFile` / `atomicCopyFile` / `atomicCopyFileSync`
+  四个入口统一走 `RENAME_RETRY_DELAYS=[20,60,150]`，只对 `EPERM`/`EBUSY`/`EACCES`/`ENOTEMPTY`
+  重试。Windows 上 rename 撞宿主进程占用是瞬时的 —— 实测过一次
+  `EPERM rename *.tmp -> cordis.patch.yml`，退避重试即成功、字节一致。三次都失败时抛
+  带 `code` 与中文提示的包装错误（"宿主进程可能正占用该文件：退出 DeepSeek Harness 后重试"），
+  而不是把裸 `EPERM` 丢给用户。
+- **helper 日志诊断**（吸收 `Crow-purge/lib/restart-diagnostics.js`，新增
+  `lib/helper-logs.js`）：`restart-desktop.js` / `uninstall-restart.js` 都是
+  detached + `stdio: ignore` 的子进程，宿主一退出没人接它们的输出，失败时唯一证据就是
+  它们自己往 `%TEMP%` 写的日志。新增 `readLogTail` / `helperLogDiagnostics` /
+  `nonEmptyHelperLogs`，只读尾部 8 KB、只取最后 12 行、从中间切进来时丢掉半行
+  —— `/status` 是 5 秒一次的轮询，不能每次整文件读。`/dsh-purge/status` 返回
+  `helper_logs` 字段，`--status` 在有内容时把路径与尾部行直接打出来。
+- **动作流水**（吸收 `dsh-purge-plus/lib/tool-gate.js` 的「审计永远要有」那一半判据，
+  新增 `lib/audit-log.js`）：`apply` / `revert` / `uninstall` 三个 HTTP 路由每次动作落一行
+  JSONL 到 `<DSH_HOME>/dsh-purge/audit.jsonl`，含时间、pid、动作、结果、宿主、耗时、错误；
+  超过 1 MB 翻滚成 `.1`。**只记流水，不加审批门** —— 本仓库的主入口是人自己点「应用」，
+  人就是审批者，再弹一次只是多一次点击，而本机策略可能把 approval 一律自动拒绝，
+  强制审批等于把插件锁死。`/dsh-purge/status` 返回 `audit_tail`（最近 20 条），
+  `--status` 打最近 5 条。
+- **被烧掉的 bak 基线重建**（吸收 `555bbbAAA/dsh-purge/lib/repair-baks.js`，新增
+  `lib/bak-repair.js` + CLI `--repair-baks [--write]`）：1.1.72 之前的
+  `refreshStaleBaksForUpgrade` 会把唯一一份原始备份刷成已打补丁的字节。现在那个函数
+  已经不会再烧新备份，但**已经烧掉的**必须从别处取回原文，唯一可靠来源是官方归档
+  `app.asar`。判定严格：只处理 `bak` 与当前文件**逐字节相同**的坏备份；`bak != current`
+  的干净备份一律不动；正式文件一律不碰；归档里那份与当前文件相同（说明当前文件本来就是
+  官方原文）时也跳过。默认只出计划，`--write` 才落盘。
+- **#94/#95 漂移误判修正**：官方 `0.2.1-rc.3` 自己就把工具调度器改成了 `Symbol.for(...)`、
+  也把 `toolRuntimeScheduler()` 搬进了 agent-loop，只是没带我们的注释。只认注释会让这两条
+  永远停在 drifted（"官方原文已改，需更新 pattern"），实际早就改到位了。两条补丁改为
+  `markersAny: true` 并补「结果态」标记（`Symbol.for("...")`、`function toolRuntimeScheduler(tools) {`、
+  那句 `duplicate @deepseek-ai/dsh-tools copies split the scheduler Symbol`），
+  状态从「77/94 已清洗, 2 漂移」变成 **81/94 已清洗, 0 待清洗, 0 漂移**。
+- 测试 292 → **315 条**：新增 `test/helper-logs.test.mjs`(8)、`test/audit-log.test.mjs`(7)、
+  `test/bak-repair.test.mjs`(8)。
+
+## English
+
+- Version **1.1.86**. Second GitHub-ecosystem patrol: absorbed five capabilities from
+  `dongliuwuzhong-arch/DSH-purge`, `Crow-purge`, `54zhien/dsh-purge-plus`,
+  `555bbbAAA/dsh-purge` and `realMisakaMikoto/dsh-purge`, rewritten to this repo's conventions.
+- Atomic writes now retry `rename` on transient Windows contention (`EPERM`/`EBUSY`/`EACCES`/`ENOTEMPTY`,
+  delays 20/60/150 ms) instead of failing on the first attempt.
+- New `lib/helper-logs.js`: reads the tail (8 KB / 12 lines) of the detached helper logs in `%TEMP%`
+  and exposes them through `/dsh-purge/status` and `--status`.
+- New `lib/audit-log.js`: `apply` / `revert` / `uninstall` append one JSONL record each to
+  `<DSH_HOME>/dsh-purge/audit.jsonl` (rotates at 1 MB). Audit only — no approval gate.
+- New `lib/bak-repair.js` + `--repair-baks [--write]`: rebuild burned `.dshpurge.bak` baselines
+  from the official `app.asar`. Dry run by default; only byte-identical bak/current pairs are touched.
+- #94/#95 no longer report false drift on host `0.2.1-rc.3` (`markersAny` + result-state markers).
+
+# 1.1.85
+
+## 中文
+
+- 版本 **1.1.85**。合并上游 1.1.83～1.1.85，并把社区版（kingcharleslzy-ai/dsh-purge）里
+  三条本地缺的能力按本仓库口径重写后整合进来。
+- **尾部锚点**（上游 1.1.84 / `lib/anchor.js`）：锚点段物理追加到 system prompt sections
+  末尾（waterfall 返回的数组顺序就是渲染顺序，`order` 字段不参与排序），`identity.js`
+  新增 `anchorText` 参数、同名段先滤再追加；锚点跟随操作者语言，删掉写死的英文开头句
+  —— 那是红队会话回答突然变英文的根因。`anchorMode: "auto"` 可关。
+- **子代理审批接管**（上游 1.1.84 / `lib/subagent-control.js`）：子会话
+  `approval/policy=never` 会让 `decide()` 在 `approval/request` 瀑布之前直接 rejected，
+  表现为「子代理什么都干不了」。这里把子会话的 never 改回 ask 并在瀑布放行；
+  `subagentControl: false` 可关。主会话策略不动。
+- **office 技能自愈**（上游 1.1.84）：`resources/runtime/office-skills/office/SKILL.md`
+  缺失时桌面端启动直接 `DesktopHostFatalError` 退出。`healOfficeSkillsRuntimeOnDisk()`
+  在插件起来之后从 app.asar / npm 安装树把缺的文件补回磁盘（救不了崩溃当次，但下次不崩）。
+- **#194 卡顿熔断**：`refreshHungOperator` 改按内容变更版本号缓存（内存里换了正文但
+  mtime 没变也算失效）；加风暴熔断（10s 内 120 次）与慢调用熔断（单次 ≥1.5s 进 30s
+  冷却，期间只交内存钉子）；`rewriteLiveAssembly` 用 WeakMap 按 assembly 对象去重，
+  guard 与 waterfall 不再各跑一遍 22k 正文。`assemble.rewrite` 日志新增
+  `approval`（审批策略探针）与 `injectTail`（末段名匹配 `dsh-purge:*`）。
+- **#191**：`cordis.patch.yml` 为 `[]` 时替换整行而不是追加成第二个文档。
+- **#185 / #180**：`allowBuilds` 只写裸包名（`dsh-purge@https://...` 在 pnpm 11 会报
+  `ERR_PNPM_INVALID_VERSION_UNION`）；URL 键解析不再被冒号截断、写回自动加引号；
+  重写只保留精确期望键、畸形/过期键自愈，写前过最小校验，不过不写盘。
+- **#196 深色主题**：宿主暗色下 `--dsw-alias-brand-primary` 解析成近白色 `#f9fafb`，
+  设置页与演练台「品牌色作底 + 白字」的按钮全变白块。暗色统一改 `#3d8f68` 绿实底、
+  悬停 `#347a59`，并显式写 `-webkit-text-fill-color`。
+- **新增 #98 / #99 / #100**（rc.3 专属，均 optional）：
+  - #98 `SANDBOX_POLICY_BRAND_NEUTRAL`：沙箱策略句去品牌。
+  - #99 `SKILL_BADGE_DESCRIPTION_NEUTRAL`：官方「powered by dsh」徽章描述中性化。
+  - #100 `DESKTOP_HOST_SIGNAL_EXIT_LOG`：宿主被信号杀掉时 #83 直接静默 resolve，
+    UI 永远不知道 host 已经没了。保持不弹框，但把 signal/code 写进
+    `os.tmpdir()/dsh-purge-desktop.log`。
+- **维护锁**（吸收社区版 `maintenance-lock.js` 的判据，重写实现）：改宿主文件不是原子的，
+  两个窗口同时点「应用」会各读原文各写回，后写的覆盖先写的，结果是「一半补丁在、一半
+  不在」而两份报告都成功。`lib/maintenance-lock.js` 把这段串行化，落在
+  `$DSH_HOME/dsh-purge/`：
+  - **租约年龄永远不能证明进程已死**。只看 mtime 判断「锁太老可以抢」，会在维护进程
+    正好写文件时把锁抢走。死活只看 PID：`kill(pid,0)` 拿到 `ESRCH` 才算死，`EPERM`
+    一律当活；PID 会被复用，所以还要求「当前进程创建时间晚于锁创建时间」。
+  - 落盘形态是「目录 + 唯一文件名」而不是单个 lock 文件：目录 rename 是原子的，
+    rename 成功那一刻内容已经写完，不存在空锁窗口；再用 hardlink 造
+    `maintenance.lock` 兼容名，校验时比对 inode+dev —— 有人手改/复制立刻 `LOCK_LOST`。
+  - 错误码 `MAINTENANCE_BUSY` / `LOCK_LOST` / `LOCK_UNREADABLE` /
+    `LOCK_RELEASE_FAILED`，调用方按 code 分支。释放失败保留现场并留痕，下次 acquire
+    先补释放。
+  - 面板与 `bin/dsh-purge.js` 都认 `MAINTENANCE_BUSY`，给出「等另一个窗口跑完，别删锁文件」。
+- **拒答重试**（吸收社区版 `refusal-retry.js` 的形态，判定与话术换成本地模块）：
+  接在 `request-shape` 的代理 adapter 上，因为宿主 request 是 freeze 的、`llm/stream`
+  的 waterfall `next()` 不收参数，旁听者改不动请求，唯一能重发的位置就是 adapter 自己。
+  - 判定用 `lib/refusal-scan.js` 的 `scanReply()`（全文扫描 + opening/tail 位置标注）；
+    社区版只扫开头 600 字符，「先给答案、末尾补一句我无法提供」会被判成正常。
+  - 话术用 `lib/retry-ladder.js` 的 `planRetry()`（amplify / sanitize / giveup 三级阶梯），
+    不是一句固定话术。
+  - 只在开头缓冲 400 字符判一次；工具调用 / reasoning / finish 一出现立刻放行，
+    不把工具轮次缓冲住。只重试一次，第二次照样拒答就把内容原样交出去，不无限循环。
+    起标题、压缩这类带 `purpose` 的旁路调用完全透传。
+  - 开关：`refusalRetry: false`、`refusalBufferChars`、`refusalMaxAttempts`、
+    `refusalRubric`、`refusalSanitize`。
+- **#89 / #90 rc.3 变体**：#32/#53 的 `file` 加 `harness-dev-context` 并补齐
+  rc.3 布局的替换句与 marker（`Current implementation checkout:` 等）；#53 另补一条
+  正则，收掉模板字面量里「这个 checkout 只能用来读 DSH 自己」的用途限制句
+  （`LEGACY_SOURCE` 里的同句是旧会话锚点，不动）。
+- 测试 292 条全过（新增 `maintenance-lock.test.mjs` 10 条、`refusal-retry.test.mjs`
+  16 条、`client-dark-theme.test.js` 3 条、`anchor-wiring.test.mjs` 12 条）。
+
 # 1.1.82
 
 ## 中文

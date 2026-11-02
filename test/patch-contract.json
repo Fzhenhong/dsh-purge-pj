@@ -440,6 +440,76 @@
     ]
   },
   {
+    "id": 96,
+    "name": "MODEL_SWITCH_IGNORE_ALIAS",
+    "layer": "代码",
+    "layerEn": "Code",
+    "files": [
+      "agent-model-selection"
+    ],
+    "surfaces": [],
+    "optional": false,
+    "softSettle": false,
+    "skipIfMarked": false,
+    "strictFiles": false,
+    "markers": [
+      "[dsh-purge-96] provider"
+    ],
+    "markersAny": false,
+    "replacements": [
+      {
+        "kind": "string",
+        "chars": 110,
+        "lines": 3
+      },
+      {
+        "kind": "string",
+        "chars": 130,
+        "lines": 4
+      },
+      {
+        "kind": "string",
+        "chars": 134,
+        "lines": 3
+      }
+    ]
+  },
+  {
+    "id": 97,
+    "name": "MODEL_SWITCH_IGNORE_ALIAS_INLINE",
+    "layer": "代码",
+    "layerEn": "Code",
+    "files": [
+      "agent-model-selection-inline"
+    ],
+    "surfaces": [],
+    "optional": false,
+    "softSettle": false,
+    "skipIfMarked": false,
+    "strictFiles": false,
+    "markers": [
+      "[dsh-purge-97] provider"
+    ],
+    "markersAny": false,
+    "replacements": [
+      {
+        "kind": "string",
+        "chars": 107,
+        "lines": 3
+      },
+      {
+        "kind": "string",
+        "chars": 124,
+        "lines": 4
+      },
+      {
+        "kind": "string",
+        "chars": 131,
+        "lines": 3
+      }
+    ]
+  },
+  {
     "id": 9,
     "name": "APPROVAL_AUTO_GRANT",
     "layer": "代码",
@@ -1872,6 +1942,11 @@
         "kind": "string",
         "chars": 73,
         "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 58,
+        "lines": 1
       }
     ]
   },
@@ -2230,14 +2305,9 @@
     "markersAny": false,
     "replacements": [
       {
-        "kind": "string",
-        "chars": 169,
-        "lines": 6
-      },
-      {
-        "kind": "string",
-        "chars": 93,
-        "lines": 3
+        "kind": "regexp",
+        "source": "(\\t*)append\\(record\\) \\{\\n(\\t*)const event = record\\.event;\\n(\\t*)if \\(this\\.inputs\\.has\\(event\\.seq\\)\\) return \"none\";\\n((?:(?!isRewindMarker)[\\s\\S]){0,300}?)(\\t*)this\\.inputs\\.set\\(event\\.seq, record\\);\\n",
+        "flags": "g"
       }
     ]
   },
@@ -3024,9 +3094,11 @@
     "skipIfMarked": true,
     "strictFiles": false,
     "markers": [
-      "[dsh-purge] shared scheduler symbol"
+      "[dsh-purge] shared scheduler symbol",
+      "Symbol.for(\"@deepseek-ai/dsh-tools.scheduler\")",
+      "Symbol.for('@deepseek-ai/dsh-tools.scheduler')"
     ],
-    "markersAny": false,
+    "markersAny": true,
     "replacements": [
       {
         "kind": "string",
@@ -3054,9 +3126,11 @@
     "skipIfMarked": true,
     "strictFiles": false,
     "markers": [
-      "[dsh-purge] scheduler symbol fallback"
+      "[dsh-purge] scheduler symbol fallback",
+      "function toolRuntimeScheduler(tools) {",
+      "duplicate @deepseek-ai/dsh-tools copies split the scheduler Symbol"
     ],
-    "markersAny": false,
+    "markersAny": true,
     "replacements": [
       {
         "kind": "string",
@@ -3076,6 +3150,98 @@
       {
         "kind": "string",
         "chars": 73,
+        "lines": 1
+      }
+    ]
+  },
+  {
+    "id": 98,
+    "name": "SANDBOX_POLICY_BRAND_NEUTRAL",
+    "layer": "提示词",
+    "layerEn": "Prompt",
+    "files": [
+      "sandbox-policy"
+    ],
+    "surfaces": [],
+    "optional": true,
+    "softSettle": false,
+    "skipIfMarked": false,
+    "strictFiles": false,
+    "markers": [
+      "Current file policy: "
+    ],
+    "markersAny": false,
+    "replacements": [
+      {
+        "kind": "string",
+        "chars": 25,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 32,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 38,
+        "lines": 1
+      }
+    ]
+  },
+  {
+    "id": 99,
+    "name": "SKILL_BADGE_DESCRIPTION_NEUTRAL",
+    "layer": "提示词",
+    "layerEn": "Prompt",
+    "files": [
+      "skill-badge"
+    ],
+    "surfaces": [],
+    "optional": true,
+    "softSettle": false,
+    "skipIfMarked": false,
+    "strictFiles": false,
+    "markers": [
+      "Add a small attribution badge to documents"
+    ],
+    "markersAny": false,
+    "replacements": [
+      {
+        "kind": "string",
+        "chars": 134,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 114,
+        "lines": 1
+      }
+    ]
+  },
+  {
+    "id": 100,
+    "name": "DESKTOP_HOST_SIGNAL_EXIT_LOG",
+    "layer": "代码",
+    "layerEn": "Code",
+    "files": [
+      "desktop-shell"
+    ],
+    "surfaces": [
+      "desktop"
+    ],
+    "optional": true,
+    "softSettle": false,
+    "skipIfMarked": true,
+    "strictFiles": false,
+    "markers": [
+      "[dsh-purge] host signal exit logged"
+    ],
+    "markersAny": false,
+    "replacements": [
+      {
+        "kind": "string",
+        "chars": 51,
         "lines": 1
       }
     ]

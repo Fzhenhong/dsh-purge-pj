@@ -38,6 +38,7 @@
   config:
     enabled: true
     autoApplyOnStart: false
+    autoUnsealOnStart: true
     autoUpdateOnStart: false
     autoRevertOnMissing: false
     injectOnce: false

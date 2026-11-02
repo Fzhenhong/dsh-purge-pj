@@ -286,7 +286,12 @@ test("makeProxyAdapter: 每次调用都取当前 adapter（上游换实例后不
     stream: () => ["new"],
   };
   assert.equal(proxy.providerInfo("real-provider-purge").name, "新实例");
-  assert.deepEqual(proxy.stream({ provider: "real-provider-purge", model: "m", messages: [sysMsg("s"), userMsg("u")] }), ["new"]);
+  // stream 现在被拒答重试层包着，返回的是 async iterable（宿主本来就按 async iterable 消费）。
+  const drained = [];
+  for await (const chunk of proxy.stream({ provider: "real-provider-purge", model: "m", messages: [sysMsg("s"), userMsg("u")] })) {
+    drained.push(chunk);
+  }
+  assert.deepEqual(drained, ["new"]);
   assert.deepEqual(stale.stream(), ["old"], "旧实例本身不该被改动");
 });
 
@@ -337,4 +342,26 @@ test("installRequestShape: provider 不存在时记 failed 且原样放行", asy
   assert.equal(out.provider, "nope");
   assert.ok(state.state().failed.includes("nope"));
   assert.equal(state.state().layer, "failed:NO_ADAPTER");
+});
+
+test("installRequestShape: 别名先到（插件热重载后）也会补注册源 provider", async () => {
+  const real = {
+    providerInfo: () => ({ id: "real-provider", name: "Real" }),
+    stream: () => [],
+    listModels: async () => [],
+    resolveModel: async () => ({ id: "m", provider: "real-provider" }),
+    prepareCall: async () => ({ model: { provider: "real-provider" }, stream: () => {} }),
+  };
+  const ctx = fakeCtx(real);
+  let hook = null;
+  ctx.on = (event, fn) => {
+    if (event === "agent/request") hook = fn;
+    return () => {};
+  };
+  const state = installRequestShape(ctx, {});
+  const out = await hook({}, async () => ({ provider: "real-provider-purge", model: "m" }));
+  assert.equal(out.provider, "real-provider-purge");
+  assert.deepEqual(state.state().aliases, ["real-provider-purge"]);
+  assert.equal(ctx.__registered.length, 1);
+  assert.deepEqual(ctx.__registered[0].providers, ["real-provider-purge"]);
 });

@@ -28,14 +28,61 @@ async function printStatus(state) {
   out.push(`  注入文件       ${state.override_path}`);
   out.push(`  注入状态       ${state.override_status}`);
   out.push("");
-  out.push(`  补丁 ${state.patches_applied}/${core.ALL_PATCHES.length} 已清洗, ${state.patches_pending} 待清洗`);
+  out.push(`  补丁 ${state.patches_applied}/${core.ALL_PATCHES.length} 已清洗, ${state.patches_pending} 待清洗`
+    + (state.patches_drifted ? `, ${state.patches_drifted} 漂移（官方原文已改，需更新 pattern）` : ""));
+  if (state.host_version) {
+    // 只有真的跨 minor/major 才报「未适配」。rc 号不同（本机声明 rc.2、在跑 rc.3/rc.5）
+    // 官方原文通常没动，补丁照样 applied，把它画成红的会让人以为出了事。
+    const level = state.host_compat_level || "unknown";
+    const soft = level === "prerelease" || level === "patch";
+    const compat = state.host_supported === false
+      ? `  ← 未适配：插件声明 ${state.host_target || "?"}（跨版本）`
+      : soft
+        ? `  ← 与声明 ${state.host_target || "?"} 仅差预发布/补丁号，原文未变`
+        : "";
+    out.push(`  宿主版本 / host  ${state.host_version}${compat}`);
+  }
   for (const p of core.ALL_PATCHES) {
     const s = state.patch_status[p.id];
-    const mark = s === "applied" ? "✓" : s === "pending" ? "✗" : "·";
+    const mark = s === "applied" ? "✓" : s === "pending" ? "✗" : s === "drifted" ? "!" : "·";
     out.push(`    ${mark} [#${String(p.id).padEnd(2)}] ${p.name.padEnd(30)} ${p.layer}/${p.layer_en} — ${s}`);
   }
   out.push("");
   out.push(`  shim: dsh.cmd=${state.shim_cmd}  dsh.ps1=${state.shim_ps1}  dsh=${state.shim_bin}`);
+  try {
+    const { helperLogDiagnostics, nonEmptyHelperLogs } = await import("../lib/helper-logs.js");
+    const picked = nonEmptyHelperLogs(helperLogDiagnostics());
+    const keys = Object.keys(picked);
+    if (keys.length > 0) {
+      out.push("");
+      out.push("  helper 日志 / helper logs（detached 子进程，stdio 被丢弃，只剩这些文件）");
+      for (const key of keys) {
+        const entry = picked[key];
+        const when = entry.mtime ? new Date(entry.mtime).toISOString() : "?";
+        out.push(`    ${key.padEnd(16)} ${entry.path}`);
+        out.push(`      ${entry.size} B, 最后写入 ${when}${entry.truncated ? "（只读尾部）" : ""}`);
+        for (const line of entry.lines) out.push(`      | ${line}`);
+      }
+    }
+  } catch {
+    // 日志诊断挂了不该连累 --status 本身。
+  }
+  try {
+    const { readAuditTail } = await import("../lib/audit-log.js");
+    const audit = readAuditTail(state.dsh_home, { limit: 5 });
+    if (audit.exists && audit.entries.length > 0) {
+      out.push("");
+      out.push("  最近动作 / recent actions（apply / revert / uninstall 流水）");
+      for (const e of audit.entries) {
+        const mark = e.ok ? "✓" : "✗";
+        const detail = e.error ? `  ${e.error}` : "";
+        out.push(`    ${mark} ${e.at}  ${String(e.action).padEnd(10)} ${e.ms !== undefined ? e.ms + "ms" : ""}${detail}`);
+      }
+      out.push(`    流水文件 / audit  ${audit.path}`);
+    }
+  } catch {
+    // 流水读不到也不该连累 --status。
+  }
   try {
     const { runSelfcheck, formatSelfcheck } = await import("../lib/selfcheck.js");
     const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -516,7 +563,7 @@ async function runProbe(rest) {
 }
 
 async function main() {
-  const mode = args.find((a) => ["--apply", "--revert", "--uninstall", "--status", "--edit", "--help", "--scan", "--eval", "--doctor", "--reanchor", "--probe"].includes(a));
+  const mode = args.find((a) => ["--apply", "--revert", "--uninstall", "--status", "--edit", "--help", "--scan", "--eval", "--doctor", "--reanchor", "--probe", "--repair-baks"].includes(a));
 
   if (mode === "--scan") {
     await runScan(args.filter((a) => a !== "--scan"));
@@ -543,6 +590,49 @@ async function main() {
     return;
   }
 
+  if (mode === "--repair-baks") {
+    // 从官方归档 app.asar 重建被烧掉的 .dshpurge.bak 基线（默认只出计划）。
+    const { repairBurnedBaksFromArchive, planBurnedBakRepair } = await import("../lib/bak-repair.js");
+    const write = args.includes("--write");
+    const state0 = await core.gatherState();
+    const bases = state0.ai_base ? [state0.ai_base] : [];
+    if (bases.length === 0) {
+      console.log("[ERROR] " + core.missingAiBaseMessage());
+      process.exitCode = 1;
+      return;
+    }
+    let totalBurned = 0;
+    let totalWritten = 0;
+    for (const aiBase of bases) {
+      const plan = planBurnedBakRepair(aiBase);
+      console.log(`  宿主 / host  ${aiBase}`);
+      console.log(`  归档 / asar  ${plan.archive || "（没找到：" + plan.reason + "）"}`);
+      console.log(`  扫描 bak     ${plan.scanned} 份，其中与当前文件逐字节相同的（已烧）${plan.burned.length} 份`);
+      totalBurned += plan.burned.length;
+      if (plan.burned.length === 0) continue;
+      if (!plan.ok || !plan.archive) {
+        console.log(`  [WARN] 没有可用归档，无法重建：${plan.reason}`);
+        continue;
+      }
+      const out = repairBurnedBaksFromArchive(aiBase, { write });
+      totalWritten += out.written.length;
+      for (const item of out.burned) {
+        if (item.available) {
+          console.log(`    ${write ? "✓ 已重建" : "· 可重建"}  ${item.rel}`);
+        }
+      }
+      for (const item of out.skipped) {
+        console.log(`    ✗ 跳过      ${item.rel}  （${item.reason}）`);
+      }
+      if (out.error) console.log(`  [ERROR] ${out.error}`);
+    }
+    console.log("");
+    console.log(write
+      ? `  结果：${totalBurned} 份已烧，重建 ${totalWritten} 份。`
+      : `  结果：${totalBurned} 份已烧。这是计划（未落盘），加 --write 才写回 .dshpurge.bak。`);
+    return;
+  }
+
   if (mode === "--help" || args.includes("-h")) {
     console.log(`dsh-purge 用法:
   dsh-purge --status     显示状态
@@ -559,6 +649,7 @@ async function main() {
   dsh-purge --doctor     锚点体检：逐补丁报 applied/pending/drifted/missing（加 --all 扫全部宿主）
   dsh-purge --reanchor   钉漂移补丁的本地覆盖（候选行唯一才收；<补丁id> <rep#> [--dry] 单钉）
   dsh-purge --probe [--clear] 装运行时探针验证注入送达 / 摘除探针
+  dsh-purge --repair-baks [--write] 从官方 app.asar 重建被烧掉的 .dshpurge.bak（默认只出计划）
   dsh-purge --help       帮助`);
     return;
   }
@@ -584,10 +675,22 @@ async function main() {
     const { patches: effectivePatches, applied, stale } = applyAnchorOverrides(core.ALL_PATCHES, overrides);
     if (applied.length) console.log(`  ✓ 锚点覆盖生效 ${applied.length} 处${stale.length ? `（另 ${stale.length} 处 stale 已丢弃）` : ""}`);
 
-    const { hosts, report } = await core.applyPatchesAllHosts(effectivePatches, {
-      preserveClientBundles: false,
-      forApply: true,
-    });
+    let multi;
+    try {
+      multi = await core.applyPatchesAllHosts(effectivePatches, {
+        preserveClientBundles: false,
+        forApply: true,
+      });
+    } catch (e) {
+      if (e && e.code === "MAINTENANCE_BUSY") {
+        console.error(`维护中：${e.message}`);
+        console.error("等另一个窗口 / CLI 跑完再执行；不要删锁文件（$DSH_HOME/dsh-purge/maintenance.lock）。");
+        process.exitCode = 3;
+        return;
+      }
+      throw e;
+    }
+    const { hosts, report } = multi;
     for (const h of hosts) console.log(`  宿主 / host → ${h.aiBase}`);
     for (const r of report) {
       const m = r.status === "applied" ? "✓ 已清洗" : r.status === "already" ? "- 已是最新" : r.status === "missing_file" ? "⚠ 文件缺失" : `✗ ${r.status}`;
@@ -596,6 +699,13 @@ async function main() {
     const flashHost = hosts[0]?.aiBase || state.ai_base;
     const flash = core.silenceCmdFlash(flashHost);
     console.log(`  cmd-flash=${flash.entry} phase-1=${flash.phase1} ok=${flash.ok}`);
+    // #197：preflight 侧车注入状态单独一行。它决定「下次 dsh web 会不会自动回收
+    // 上一轮 detached 起来的孤儿 server」——注不进去就会撞 EADDRINUSE 起不来。
+    if (flash.preflight) {
+      const pf = flash.preflight;
+      const bad = typeof pf === "string" && pf.startsWith("error:");
+      console.log(`  web preflight=${pf}${bad ? "  ← 侧车没写进去，下次 dsh web 可能撞 EADDRINUSE" : ""}`);
+    }
     if (hosts.length > 1) {
       console.log(`  多宿主 / multi-host: ${hosts.length} 份 @deepseek-ai 已清洗`);
     }
