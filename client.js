@@ -1,4 +1,4 @@
-window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
+window.__ModuleLoader__.load({ id: "dsh-purge-pj", factory: (require) => {
 
 		var module = { exports: {} };
 		var exports = module.exports;
@@ -7,7 +7,7 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 		const h = react.createElement;
 		const { useState, useEffect, useCallback, useRef, Component } = react;
 
-		const name = "dsh-purge";
+		const name = "dsh-purge-pj";
 		const inject = ["slots", "locale", "uiConversation"];
 		const NS = "settings.dsh-purge";
 		let translate = (key) => key;
@@ -129,9 +129,9 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			nav: "规则设定",
 			"dock.clean": "清洗",
 			"dock.drill": "演练台",
-			"dock.toggle": "dsh-purge",
-			"dock.newSession": "dsh-purge",
-			"dock.inSession": "dsh-purge",
+			"dock.toggle": "dsh-purge-pj",
+			"dock.newSession": "dsh-purge-pj",
+			"dock.inSession": "dsh-purge-pj",
 			"dock.redteam": "红队模式",
 			"dock.full": "全面浏览",
 			"dock.close": "收起",
@@ -139,8 +139,8 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"welcome.title": "用户须知",
 			"welcome.lead": "首次安装本插件时请阅读以下说明。确认后本窗不再弹出。",
 			"welcome.warn": "本插件免费开源。任何背着作者私自售卖、付费倒卖或借本项目盈利的行为，作者将依法追究法律责任。",
-			"welcome.body": "dsh-purge 是 DeepSeek Harness 的本机网络安全红队评测与清洗插件：在受控本机环境中调整提示词与补丁、做授权范围内的演练台操作。项目免费、非营利，源码仓库：",
-			"welcome.repo": "https://github.com/YuJunZhiXue/dsh-purge",
+			"welcome.body": "dsh-purge-pj 是 DeepSeek Harness 的本机网络安全红队评测与清洗插件：在受控本机环境中调整提示词与补丁、做授权范围内的演练台操作。项目免费、非营利，源码仓库：",
+			"welcome.repo": "https://github.com/Fzhenhong/dsh-purge-pj",
 			"welcome.ban1": "禁止将本项目用于未授权的网络攻击、入侵、窃取数据、破坏系统或任何违法犯罪。",
 			"welcome.ban2": "禁止商业售卖、付费倒卖、黑灰产牟利，以及隐瞒作者的营利性再分发。",
 			"welcome.ban3": "使用者须自行遵守所在地法律法规与平台规范；违法后果由行为人自行承担，与作者无关。",
@@ -165,7 +165,7 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"envGate.lead": "红队模式发送前需要本机工具。未检测到可用环境时，先去环境适配，或确认暂不配置。",
 			"envGate.kaliHint": "检测到 Kali 时会直接用本机工具，不必填路径。没有 Kali 时，在环境适配里填写各工具路径，或选一个整包文件夹自动分配。",
 			"envGate.skip": "暂不配置",
-			"envGate.skipConfirm": "确认后这次可以继续对话。扫描和利用类技能仍会因为缺少工具而不可用，之后可以在 dsh-purge → 环境适配里补路径。",
+			"envGate.skipConfirm": "确认后这次可以继续对话。扫描和利用类技能仍会因为缺少工具而不可用，之后可以在 dsh-purge-pj → 环境适配里补路径。",
 			"envGate.skipNo": "返回",
 			"envGate.skipYes": "确认暂不配置",
 			"envGate.go": "去环境适配",
@@ -232,7 +232,7 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"btn.revert": "还原",
 			"btn.uninstall": "卸载",
 			"btn.uninstall.busy": "卸载中…",
-			"uninstall.title": "卸载 dsh-purge",
+			"uninstall.title": "卸载 dsh-purge-pj",
 			"uninstall.body": "是否卸载？卸载将还原回原版，并清除本插件的全部文件与补丁。",
 			"uninstall.confirm": "确认卸载",
 			"uninstall.cancel": "取消",
@@ -491,9 +491,9 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			nav: "Rules",
 			"dock.clean": "Clean",
 			"dock.drill": "Drill",
-			"dock.toggle": "dsh-purge",
-			"dock.newSession": "dsh-purge",
-			"dock.inSession": "dsh-purge",
+			"dock.toggle": "dsh-purge-pj",
+			"dock.newSession": "dsh-purge-pj",
+			"dock.inSession": "dsh-purge-pj",
 			"dock.redteam": "Red team",
 			"dock.full": "Full view",
 			"dock.close": "Collapse",
@@ -501,8 +501,8 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"welcome.title": "User notice",
 			"welcome.lead": "Please read this on first install. After you confirm, it will not appear again.",
 			"welcome.warn": "This plugin is free and open source. Anyone who sells, resells, or profits from it behind the author's back may face legal action.",
-			"welcome.body": "dsh-purge is a local DeepSeek Harness plugin for security evaluation and cleaning: adjust prompts and patches on a machine you control, and use the drill console only within authorized scope. It is free and non-profit. Repository:",
-			"welcome.repo": "https://github.com/YuJunZhiXue/dsh-purge",
+			"welcome.body": "dsh-purge-pj is a local DeepSeek Harness plugin for security evaluation and cleaning: adjust prompts and patches on a machine you control, and use the drill console only within authorized scope. It is free and non-profit. Repository:",
+			"welcome.repo": "https://github.com/Fzhenhong/dsh-purge-pj",
 			"welcome.ban1": "Do not use this project for unauthorized attacks, intrusion, data theft, sabotage, or any illegal activity.",
 			"welcome.ban2": "Do not commercially sell, resell, or profit from gray-market use, or redistribute for profit without the author.",
 			"welcome.ban3": "You must follow local law and platform rules; illegal use is solely your responsibility.",
@@ -527,7 +527,7 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"envGate.lead": "Red team mode needs local tools before you send. If none are available, open Env adapt or confirm you will continue without them.",
 			"envGate.kaliHint": "When Kali is detected, local tools are used directly and paths are optional. Otherwise set each tool path in Env adapt, or pick one toolkit folder to assign them.",
 			"envGate.skip": "Skip for now",
-			"envGate.skipConfirm": "You can keep chatting after this. Scan and exploit skills stay unavailable until the tools are installed. You can add paths later under dsh-purge → Env adapt.",
+			"envGate.skipConfirm": "You can keep chatting after this. Scan and exploit skills stay unavailable until the tools are installed. You can add paths later under dsh-purge-pj → Env adapt.",
 			"envGate.skipNo": "Back",
 			"envGate.skipYes": "Continue without tools",
 			"envGate.go": "Open Env adapt",
@@ -594,7 +594,7 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"btn.revert": "Restore",
 			"btn.uninstall": "Uninstall",
 			"btn.uninstall.busy": "Uninstalling…",
-			"uninstall.title": "Uninstall dsh-purge",
+			"uninstall.title": "Uninstall dsh-purge-pj",
 			"uninstall.body": "Uninstall? This restores the original Harness and removes this plugin completely.",
 			"uninstall.confirm": "Uninstall",
 			"uninstall.cancel": "Cancel",
@@ -8861,7 +8861,7 @@ body[data-ds-dark-theme] .rt-scope-testing,.dshp-dock[data-theme="dusk"] .rt-sco
 				},
 			},
 				h("div", { className: "dshp-dock-head", onMouseDown: startDrag, title: "Drag to move the panel" },
-					h("b", null, "dsh-purge"),
+					h("b", null, "dsh-purge-pj"),
 					h("span", { style: { flex: 1 } }),
 					st.tab === "drill" && drillVisible && readDrillAuth()
 						? h("button", { type: "button", onClick: () => requestDrill("full") }, t("dock.full"))
@@ -8959,7 +8959,7 @@ body[data-ds-dark-theme] .rt-scope-testing,.dshp-dock[data-theme="dusk"] .rt-sco
 				const el = nodes[i];
 				if (!el || el.classList.contains("dshp-launch")) continue;
 				if (el.closest && el.closest(".dshp-dock, .dshp-launch")) continue;
-				if (String(el.textContent || "").trim() === "dsh-purge") return true;
+				if (String(el.textContent || "").trim() === "dsh-purge-pj") return true;
 			}
 			return false;
 		}

@@ -22,11 +22,11 @@ let client = readFileSync(clientPath, "utf8").replace(/\r\n/g, "\n");
 if (!client.includes('"dock.clean"')) {
 	client = client.replace(
 		'\t\t\tnav: "规则设定",',
-		`\t\t\tnav: "dsh-purge",
+		`\t\t\tnav: "dsh-purge-pj",
 			"dock.clean": "清洗",
 			"dock.drill": "演练台",
-			"dock.toggle": "dsh-purge",
-			"dock.newSession": "dsh-purge",
+			"dock.toggle": "dsh-purge-pj",
+			"dock.newSession": "dsh-purge-pj",
 			"dock.full": "全面浏览",
 			"dock.close": "收起",
 			"dock.unauthorized": "未授权",
@@ -46,11 +46,11 @@ if (!client.includes('"dock.clean"')) {
 	);
 	client = client.replace(
 		'\t\t\tnav: "Rules",',
-		`\t\t\tnav: "dsh-purge",
+		`\t\t\tnav: "dsh-purge-pj",
 			"dock.clean": "Clean",
 			"dock.drill": "Drill",
-			"dock.toggle": "dsh-purge",
-			"dock.newSession": "dsh-purge",
+			"dock.toggle": "dsh-purge-pj",
+			"dock.newSession": "dsh-purge-pj",
 			"dock.full": "Full view",
 			"dock.close": "Collapse",
 			"dock.unauthorized": "Unauthorized",
@@ -305,7 +305,7 @@ const dockBlock = `
 			return h(react.Fragment, null,
 				h("div", { className: "dshp-dock", "data-open": st.open ? "1" : "0" },
 					h("div", { className: "dshp-dock-head" },
-						h("b", null, "dsh-purge"),
+						h("b", null, "dsh-purge-pj"),
 						h("span", { style: { flex: 1 } }),
 						st.tab === "drill" && readDrillAuth()
 							? h("button", { type: "button", onClick: () => requestDrill("full") }, t("dock.full"))
@@ -390,7 +390,7 @@ const oldApply = `		function apply(ctx) {
 			translate = t;
 			ctx.slots.inject("settings.section", () => ctx.slots.register({
 				name: "settings.section",
-				id: "dsh-purge",
+				id: "dsh-purge-pj",
 				order: 40,
 				label: () => t("nav"),
 				locale: NS,

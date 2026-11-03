@@ -109,7 +109,8 @@ test("契约表统计与源码一致", () => {
   // #99（技能徽章描述，带 marker）、#100（host 信号退出日志，带 marker）。
   // 93 → 95：合并上游 1.1.90 后带入 #92/#93（DESKTOP_HOST/MAIN_EXIT_TRACE，均带 marker）。
   // 95 → 96：#103 DESKTOP_WELCOME_COOKIE_SWEEP（#209）带 marker。
-  assert.equal(withMarkers, 96, "带 marker 的补丁数变了");
+  // 96 → 98：#104/#105（lastUsed 落库前剥掉 -purge 别名，单文件版 + 内联版）都带 marker。
+  assert.equal(withMarkers, 98, "带 marker 的补丁数变了");
   // 50 → 53：上面三条全部 optional。53 → 55：#92/#93 同为 optional。
   // 55 → 56：#103 同为 optional。
   assert.equal(contract.filter((entry) => entry.optional).length, 56, "optional 补丁数变了");
@@ -134,7 +135,8 @@ test("layer 分布稳定（新增补丁要显式更新这张表）", () => {
   // 56 → 58：合并上游 1.1.90 带入 #92/#93（DESKTOP_HOST/MAIN_EXIT_TRACE，均为代码层）。
   // 58 → 59：#103 DESKTOP_WELCOME_COOKIE_SWEEP 落在代码层。
   assert.equal(counts.get("提示词|Prompt"), 27);
-  assert.equal(counts.get("代码|Code"), 59);
+  // 59 → 61：#104/#105（MODEL_SELECTION_LASTUSED_ALIAS 及其内联版）都是代码层。
+  assert.equal(counts.get("代码|Code"), 61);
   assert.equal(counts.get("工具|Tools"), 8);
   assert.equal(counts.get("0.1.5 兼容|0.1.5"), 1);
   assert.equal(counts.get("0.2.0 兼容|0.2.0"), 2);

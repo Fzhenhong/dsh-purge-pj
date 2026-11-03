@@ -510,6 +510,66 @@
     ]
   },
   {
+    "id": 104,
+    "name": "MODEL_SELECTION_LASTUSED_ALIAS",
+    "layer": "代码",
+    "layerEn": "Code",
+    "files": [
+      "session-model-projection"
+    ],
+    "surfaces": [],
+    "optional": false,
+    "softSettle": false,
+    "skipIfMarked": false,
+    "strictFiles": false,
+    "markers": [
+      "[dsh-purge-104] lastUsed"
+    ],
+    "markersAny": false,
+    "replacements": [
+      {
+        "kind": "string",
+        "chars": 122,
+        "lines": 3
+      },
+      {
+        "kind": "string",
+        "chars": 93,
+        "lines": 1
+      }
+    ]
+  },
+  {
+    "id": 105,
+    "name": "MODEL_SELECTION_LASTUSED_ALIAS_INLINE",
+    "layer": "代码",
+    "layerEn": "Code",
+    "files": [
+      "session-model-projection-inline"
+    ],
+    "surfaces": [],
+    "optional": false,
+    "softSettle": false,
+    "skipIfMarked": false,
+    "strictFiles": false,
+    "markers": [
+      "[dsh-purge-105] lastUsed"
+    ],
+    "markersAny": false,
+    "replacements": [
+      {
+        "kind": "string",
+        "chars": 107,
+        "lines": 3
+      },
+      {
+        "kind": "string",
+        "chars": 96,
+        "lines": 4
+      }
+    ]
+  },
+  {
     "id": 9,
     "name": "APPROVAL_AUTO_GRANT",
     "layer": "代码",

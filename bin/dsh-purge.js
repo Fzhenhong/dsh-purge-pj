@@ -12,7 +12,7 @@ const args = process.argv.slice(2);
 
 async function printStatus(state) {
   const out = [];
-  out.push("dsh-purge 状态 / Status");
+  out.push("dsh-purge-pj 状态 / Status");
   out.push("  宿主 / surface " + (state.surface || "web"));
   out.push("  DSH_HOME      " + state.dsh_home);
   if (state.desktop_install) out.push("  桌面安装       " + state.desktop_install);
@@ -122,10 +122,10 @@ async function runScan(rest) {
     text = fs.readFileSync(0, "utf8");
     label = "<stdin>";
   } else {
-    console.log(`dsh-purge --scan 用法:
-  dsh-purge --scan 答复.txt          判读单个答复
-  dsh-purge --scan replies.jsonl     批量判读（每行一个 JSON，取 reply 字段）
-  dsh-purge --scan < file.txt        从 stdin 读
+    console.log(`dsh-purge-pj --scan 用法:
+  dsh-purge-pj --scan 答复.txt          判读单个答复
+  dsh-purge-pj --scan replies.jsonl     批量判读（每行一个 JSON，取 reply 字段）
+  dsh-purge-pj --scan < file.txt        从 stdin 读
   加 --json 输出机器可读结果`);
     return;
   }
@@ -179,7 +179,7 @@ async function runScan(rest) {
   }
 
   const mark = (v) => (v === "pass" ? "✓ pass  " : v === "refusal" ? "✗ refusal" : "⚠ fallback");
-  console.log(`dsh-purge --scan  ${label}`);
+  console.log(`dsh-purge-pj --scan  ${label}`);
   console.log(`  条数 ${results.length}  pass ${tally.pass || 0}  refusal ${tally.refusal || 0}  fallback ${tally.fallback || 0}`);
   for (const r of results) {
     const s = r.scan;
@@ -207,10 +207,10 @@ async function runScan(rest) {
  * 与 --scan 的区别是「比较」而不是「判读」：--scan 回答这条答复给没给答案，
  * --eval 回答 B 臂比 A 臂好多少、这个差是不是噪声、代价是什么。
  *
- *   dsh-purge --eval A.jsonl B.jsonl
- *   dsh-purge --eval A.jsonl B.jsonl --benign benign.jsonl
- *   dsh-purge --eval A.jsonl B.jsonl --sampling 10:3:3 --json
- *   dsh-purge --eval A.jsonl B.jsonl --benign b.jsonl --lessons lessons.md
+ *   dsh-purge-pj --eval A.jsonl B.jsonl
+ *   dsh-purge-pj --eval A.jsonl B.jsonl --benign benign.jsonl
+ *   dsh-purge-pj --eval A.jsonl B.jsonl --sampling 10:3:3 --json
+ *   dsh-purge-pj --eval A.jsonl B.jsonl --benign b.jsonl --lessons lessons.md
  *
  * 三个文件都是 jsonl，每行 { id, reply }；bank 里的 expected_domain 可选。
  * --benign 的行是 { id, a: bool, b: bool }（两臂在良性题上的通过与否）。
@@ -252,17 +252,17 @@ async function runEval(rest) {
   const positional = rest.filter((a, i) => !a.startsWith("-") && !consumed.has(i));
 
   if (positional.length < 2) {
-    console.log(`dsh-purge --eval 用法:
-  dsh-purge --eval A.jsonl B.jsonl              两臂配对比较
-  dsh-purge --eval A.jsonl B.jsonl --benign b.jsonl
+    console.log(`dsh-purge-pj --eval 用法:
+  dsh-purge-pj --eval A.jsonl B.jsonl              两臂配对比较
+  dsh-purge-pj --eval A.jsonl B.jsonl --benign b.jsonl
                                                 带良性能力控制组（强烈建议）
-  dsh-purge --eval A.jsonl B.jsonl --sampling 10:3:3
+  dsh-purge-pj --eval A.jsonl B.jsonl --sampling 10:3:3
                                                 pass@k 的 n:c:k
-  dsh-purge --eval A.jsonl B.jsonl --benign b.jsonl --lessons lessons.md
+  dsh-purge-pj --eval A.jsonl B.jsonl --benign b.jsonl --lessons lessons.md
                                                 把结果蒸馏成可复用的教训（markdown）
-  dsh-purge --eval A.jsonl B.jsonl --rubric strict
+  dsh-purge-pj --eval A.jsonl B.jsonl --rubric strict
                                                 严格判分：还要求答复里有可执行的细节
-  dsh-purge --eval A.jsonl B.jsonl --ladder attempts.jsonl
+  dsh-purge-pj --eval A.jsonl B.jsonl --ladder attempts.jsonl
                                                 看重试阶梯：首答通过 vs 走完阶梯后通过
   加 --json 输出机器可读结果
   --lessons-limit N                            教训条数上限，默认 12
@@ -441,6 +441,10 @@ async function runDoctor(rest) {
   let anyDrift = 0;
   for (const base of list) {
     if (list.length > 1) console.log(`宿主 / host → ${base}`);
+    // #210：补丁全打在宿主根本不加载的解包目录里时，先把这件事说清楚，
+    // 否则 applied 计数会让人以为已经生效。
+    const shadow = core.sealedAsarShadowWarning({ aiBase: base });
+    if (shadow) console.log("[WARN] " + shadow.message);
     const rep = await diagnosePatches(base, core.ALL_PATCHES, {});
     console.log(formatDiagnosis(rep));
     anyDrift += rep.counts.drifted;
@@ -453,8 +457,8 @@ async function runDoctor(rest) {
 
 /**
  * --reanchor：对漂移补丁钉本地覆盖。
- *   dsh-purge --reanchor            对全部 drifted 逐个尝试（候选行不唯一就跳过并说明）
- *   dsh-purge --reanchor 42 1 [--dry]  只钉 patch #42 的第 1 处替换（--dry 只看不写）
+ *   dsh-purge-pj --reanchor            对全部 drifted 逐个尝试（候选行不唯一就跳过并说明）
+ *   dsh-purge-pj --reanchor 42 1 [--dry]  只钉 patch #42 的第 1 处替换（--dry 只看不写）
  * 覆盖写进 ~/.dsh/dsh-purge-anchors.json，下次 --apply 自动生效。
  */
 async function runReanchor(rest) {
@@ -468,7 +472,7 @@ async function runReanchor(rest) {
     const id = Number(rest2[0]);
     const pi = Number(rest2[1]) - 1; // help 文案用 1-based rep#
     if (!Number.isInteger(id) || !Number.isInteger(pi) || pi < 0) {
-      console.log("[ERROR] 用法：dsh-purge --reanchor <补丁id> <rep#> [--dry]   （rep# 从 1 数起）");
+      console.log("[ERROR] 用法：dsh-purge-pj --reanchor <补丁id> <rep#> [--dry]   （rep# 从 1 数起）");
       process.exit(1);
     }
     try {
@@ -524,7 +528,7 @@ async function runReanchor(rest) {
     }
   }
   if (!dryRun && ok > 0) {
-    console.log(`\n钉完 ${ok} 处（跳过 ${skip}）。重跑 dsh-purge --apply 生效。`);
+    console.log(`\n钉完 ${ok} 处（跳过 ${skip}）。重跑 dsh-purge-pj --apply 生效。`);
   } else if (dryRun) {
     console.log(`\n[dry] 候选 ${ok} 处（跳过 ${skip}）。去掉 --dry 实际写入。`);
   } else {
@@ -536,8 +540,8 @@ async function runReanchor(rest) {
  * --probe：运行时探针（吸收 Community 的 probe 思路）。
  * 把一行 DSPROBE-xxxxxxxx 追加进注入文件尾部；重启 dsh 后问它
  * 「逐字复述注入文件里 DSPROBE 开头那行」，答得出 = 注入确实送达。
- *   dsh-purge --probe          装探针（已有则只显示 token）
- *   dsh-purge --probe --clear  摘探针
+ *   dsh-purge-pj --probe          装探针（已有则只显示 token）
+ *   dsh-purge-pj --probe --clear  摘探针
  */
 async function runProbe(rest) {
   const mod = await import("../lib/probe.js");
@@ -568,11 +572,11 @@ async function runProbe(rest) {
  * 走我们的钉子/磁盘双通道）。CLI 与桌面插件进程不共享内存，切换只能走文件
  * 信号：先写 <home>/personas/active.json（rev++），插件侧 refreshHungOperator
  * 盯它的 mtime，rev 变了就把 persona 正文写成新钉——免重启生效。
- *   dsh-purge --persona              列出 personas/ 与当前激活
- *   dsh-purge --persona <名字>       切换
- *   dsh-purge --persona --off        撤下（磁盘剥块 + 信号撤钉）
- *   dsh-purge --persona --save <名>  把当前注入正文（剥 persona 块）存成 persona
- *   dsh-purge --persona --rm <名>    删除 persona 文件
+ *   dsh-purge-pj --persona              列出 personas/ 与当前激活
+ *   dsh-purge-pj --persona <名字>       切换
+ *   dsh-purge-pj --persona --off        撤下（磁盘剥块 + 信号撤钉）
+ *   dsh-purge-pj --persona --save <名>  把当前注入正文（剥 persona 块）存成 persona
+ *   dsh-purge-pj --persona --rm <名>    删除 persona 文件
  */
 async function runPersona(rest) {
   const mod = await import("../lib/persona.js");
@@ -607,7 +611,7 @@ async function runPersona(rest) {
       const st = mod.switchPersona(dshHome, nameArg);
       console.log(`  ✓ 已切换 persona →「${st.active}」（rev ${st.rev}）`);
       console.log("  桌面端下一轮对话生效（免重启）；当前对话若没换，发一条新消息触发 pre-step 重装。");
-      console.log("  验证：dsh-purge --status 看 persona 行，或 dsh-purge --probe-request 抓真实请求。");
+      console.log("  验证：dsh-purge-pj --status 看 persona 行，或 dsh-purge-pj --probe-request 抓真实请求。");
       return;
     }
     const ps = mod.personaStatus(dshHome);
@@ -732,26 +736,26 @@ async function main() {
   }
 
   if (mode === "--help" || args.includes("-h")) {
-    console.log(`dsh-purge 用法:
-  dsh-purge --status     显示状态
-  dsh-purge --apply      应用全部清洗（提示词+代码+shim+override）
-  dsh-purge --revert     回滚还原
-  dsh-purge --uninstall  卸载插件（已应用则先还原）
-  dsh-purge --edit       编辑注入文件 prompt-inject.md
-  dsh-purge --scan <文件> 判读答复给没给答案（.jsonl 批量 / 纯文本单条 / stdin）
-  dsh-purge --eval A.jsonl B.jsonl [--benign b.jsonl] [--sampling n:c:k]
+    console.log(`dsh-purge-pj 用法:
+  dsh-purge-pj --status     显示状态
+  dsh-purge-pj --apply      应用全部清洗（提示词+代码+shim+override）
+  dsh-purge-pj --revert     回滚还原
+  dsh-purge-pj --uninstall  卸载插件（已应用则先还原）
+  dsh-purge-pj --edit       编辑注入文件 prompt-inject.md
+  dsh-purge-pj --scan <文件> 判读答复给没给答案（.jsonl 批量 / 纯文本单条 / stdin）
+  dsh-purge-pj --eval A.jsonl B.jsonl [--benign b.jsonl] [--sampling n:c:k]
                          两臂配对比较：ASR 差、McNemar 显著性、良性能力代价
                          加 --rubric strict 要求答复里有可执行细节再算通过
                          加 --lessons lessons.md 把结果蒸馏成可复用的教训
                          加 --ladder attempts.jsonl 看首答通过 vs 走完重试阶梯后通过
-  dsh-purge --doctor     锚点体检：逐补丁报 applied/pending/drifted/missing（加 --all 扫全部宿主）
-  dsh-purge --reanchor   钉漂移补丁的本地覆盖（候选行唯一才收；<补丁id> <rep#> [--dry] 单钉）
-  dsh-purge --probe [--clear] 装运行时探针验证注入送达 / 摘除探针
-  dsh-purge --probe-request   请求级探针：假 provider 抓宿主请求体验证 token 进了特权层
-  dsh-purge --persona [名字|--off|--save 名|--rm 名]
+  dsh-purge-pj --doctor     锚点体检：逐补丁报 applied/pending/drifted/missing（加 --all 扫全部宿主）
+  dsh-purge-pj --reanchor   钉漂移补丁的本地覆盖（候选行唯一才收；<补丁id> <rep#> [--dry] 单钉）
+  dsh-purge-pj --probe [--clear] 装运行时探针验证注入送达 / 摘除探针
+  dsh-purge-pj --probe-request   请求级探针：假 provider 抓宿主请求体验证 token 进了特权层
+  dsh-purge-pj --persona [名字|--off|--save 名|--rm 名]
                               persona 热切：列出/切换/撤下/保存/删除（桌面端免重启生效）
-  dsh-purge --repair-baks [--write] 从官方 app.asar 重建被烧掉的 .dshpurge.bak（默认只出计划）
-  dsh-purge --help       帮助`);
+  dsh-purge-pj --repair-baks [--write] 从官方 app.asar 重建被烧掉的 .dshpurge.bak（默认只出计划）
+  dsh-purge-pj --help       帮助`);
     return;
   }
 

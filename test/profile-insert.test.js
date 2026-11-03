@@ -15,11 +15,11 @@ import {
   INSERT_BLOCK,
 } from "../lib/profile-insert.js";
 
-const MASTER_URL = "https://codeload.github.com/YuJunZhiXue/dsh-purge/tar.gz/refs/heads/master";
-const COMMIT_URL = "https://codeload.github.com/YuJunZhiXue/dsh-purge/tar.gz/abc1234567890";
+const MASTER_URL = "https://codeload.github.com/Fzhenhong/dsh-purge-pj/tar.gz/refs/heads/master";
+const COMMIT_URL = "https://codeload.github.com/Fzhenhong/dsh-purge-pj/tar.gz/abc1234567890";
 
 function withTempProfile(lockText) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dsh-purge-test-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dsh-purge-pj-test-"));
   if (lockText !== undefined) {
     fs.writeFileSync(path.join(dir, "pnpm-lock.yaml"), lockText, "utf8");
   }
@@ -27,7 +27,7 @@ function withTempProfile(lockText) {
 }
 
 function withTempPatch(content) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dsh-purge-patch-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dsh-purge-pj-patch-"));
   if (content !== undefined) {
     fs.writeFileSync(path.join(dir, "cordis.patch.yml"), content, "utf8");
   }
@@ -47,49 +47,49 @@ function topLevelInsertGroups(text) {
 }
 
 test("URL 键解析不被冒号截断", () => {
-  const parsed = parseAllowBuildLine(`  dsh-purge@${MASTER_URL}: true`);
-  assert.equal(parsed.key, `dsh-purge@${MASTER_URL}`);
+  const parsed = parseAllowBuildLine(`  dsh-purge-pj@${MASTER_URL}: true`);
+  assert.equal(parsed.key, `dsh-purge-pj@${MASTER_URL}`);
   assert.equal(parsed.value, "true");
 });
 
 test("畸形键也解析成整键（自愈时统一丢弃）", () => {
-  assert.deepEqual(parseAllowBuildLine("  dsh-purge@https: true"), {
-    key: "dsh-purge@https",
+  assert.deepEqual(parseAllowBuildLine("  dsh-purge-pj@https: true"), {
+    key: "dsh-purge-pj@https",
     value: "true",
   });
-  assert.deepEqual(parseAllowBuildLine("  dsh-purge@1.1.81: true"), {
-    key: "dsh-purge@1.1.81",
+  assert.deepEqual(parseAllowBuildLine("  dsh-purge-pj@1.1.81: true"), {
+    key: "dsh-purge-pj@1.1.81",
     value: "true",
   });
 });
 
 test("行尾没有值的 `key:` 解析为空值", () => {
-  assert.deepEqual(parseAllowBuildLine("  dsh-purge@https:"), {
-    key: "dsh-purge@https",
+  assert.deepEqual(parseAllowBuildLine("  dsh-purge-pj@https:"), {
+    key: "dsh-purge-pj@https",
     value: "",
   });
-  assert.deepEqual(parseAllowBuildLine("  dsh-purge:"), {
-    key: "dsh-purge",
+  assert.deepEqual(parseAllowBuildLine("  dsh-purge-pj:"), {
+    key: "dsh-purge-pj",
     value: "",
   });
 });
 
 test("引号包裹的键照旧解析", () => {
-  const spec = `dsh-purge@${MASTER_URL}`;
+  const spec = `dsh-purge-pj@${MASTER_URL}`;
   for (const line of [`  "${spec}": true`, `  '${spec}': true`]) {
     assert.deepEqual(parseAllowBuildLine(line), { key: spec, value: "true" });
   }
 });
 
 test("URL 键写回带引号且 round-trip 无损", () => {
-  const spec = `dsh-purge@${MASTER_URL}`;
+  const spec = `dsh-purge-pj@${MASTER_URL}`;
   const line = formatAllowBuildLine(spec);
   assert.equal(line, `  "${spec}": true`);
   assert.deepEqual(parseAllowBuildLine(line), { key: spec, value: "true" });
   // 不含 URL 的键保持无引号，round-trip 同样无损
-  const plain = formatAllowBuildLine("dsh-purge");
-  assert.equal(plain, "  dsh-purge: true");
-  assert.deepEqual(parseAllowBuildLine(plain), { key: "dsh-purge", value: "true" });
+  const plain = formatAllowBuildLine("dsh-purge-pj");
+  assert.equal(plain, "  dsh-purge-pj: true");
+  assert.deepEqual(parseAllowBuildLine(plain), { key: "dsh-purge-pj", value: "true" });
 });
 
 test("污染的 allowBuilds 重写后只剩期望键", () => {
@@ -100,11 +100,11 @@ test("污染的 allowBuilds 重写后只剩期望键", () => {
     "allowBuilds:",
     "  cpu-features: true",
     "  ssh2: true",
-    "  dsh-purge: true",
-    "  dsh-purge@1.1.81: true",
-    "  dsh-purge@https: true",
-    "  dsh-purge@https: true",
-    `  dsh-purge@${MASTER_URL}: true`,
+    "  dsh-purge-pj: true",
+    "  dsh-purge-pj@1.1.81: true",
+    "  dsh-purge-pj@https: true",
+    "  dsh-purge-pj@https: true",
+    `  dsh-purge-pj@${MASTER_URL}: true`,
     "",
   ].join("\n");
   const next = rewritePnpmAllowBuilds(polluted);
@@ -113,11 +113,11 @@ test("污染的 allowBuilds 重写后只剩期望键", () => {
   const wanted = ["cpu-features", "ssh2", ...purgePnpmBuildSpecs()];
   assert.deepEqual([...new Set(keys)], wanted);
   // 畸形历史键一个都不留
-  for (const bad of [`dsh-purge@1.1.81`, `dsh-purge@https`]) {
+  for (const bad of [`dsh-purge-pj@1.1.81`, `dsh-purge-pj@https`]) {
     assert.equal(keys.includes(bad), false, `should drop ${bad}`);
   }
-  // 重复出现过的 `dsh-purge@https` 只允许来自 wanted 精确键，且不重复
-  assert.equal(keys.filter((key) => key.startsWith("dsh-purge")).length, purgePnpmBuildSpecs().length);
+  // 重复出现过的 `dsh-purge-pj@https` 只允许来自 wanted 精确键，且不重复
+  assert.equal(keys.filter((key) => key.startsWith("dsh-purge-pj")).length, purgePnpmBuildSpecs().length);
   // 保留段的结构仍然合法
   assert.equal(validateAllowBuildRewrite(next), true);
 });
@@ -146,9 +146,9 @@ test("写前校验：重复顶层键 / 重复 allowBuilds 键 / 解析不了的�
 });
 
 test("期望键只有裸包名，不含任何 URL 键（#185）", () => {
-  // pnpm 11 遇到 `dsh-purge@https://...` 会报 ERR_PNPM_INVALID_VERSION_UNION，
+  // pnpm 11 遇到 `dsh-purge-pj@https://...` 会报 ERR_PNPM_INVALID_VERSION_UNION，
   // allowBuilds 按包名匹配即可，tarball / git / registry 安装都放行
-  assert.deepEqual(purgePnpmBuildSpecs(), ["dsh-purge"]);
+  assert.deepEqual(purgePnpmBuildSpecs(), ["dsh-purge-pj"]);
   const dir = withTempProfile([
     "lockfileVersion: '9.0'",
     "",
@@ -156,26 +156,26 @@ test("期望键只有裸包名，不含任何 URL 键（#185）", () => {
     "",
     "  .:",
     "    dependencies:",
-    "      dsh-purge:",
+    "      dsh-purge-pj:",
     `        specifier: ${COMMIT_URL}`,
-    `        version: dsh-purge@${COMMIT_URL}`,
+    `        version: dsh-purge-pj@${COMMIT_URL}`,
     "",
   ].join("\n"));
-  assert.deepEqual(purgePnpmBuildSpecs(dir), ["dsh-purge"]);
+  assert.deepEqual(purgePnpmBuildSpecs(dir), ["dsh-purge-pj"]);
 });
 
 test("输入只含 URL 键时重写后只剩裸包名", () => {
   const onlyUrl = [
     "allowBuilds:",
-    `  "dsh-purge@${MASTER_URL}": true`,
-    `  dsh-purge@${MASTER_URL}: true`,
+    `  "dsh-purge-pj@${MASTER_URL}": true`,
+    `  dsh-purge-pj@${MASTER_URL}: true`,
     "",
   ].join("\n");
   const next = rewritePnpmAllowBuilds(onlyUrl);
   const keys = next.split("\n").filter((line) => parseAllowBuildLine(line)).map((line) => parseAllowBuildLine(line).key);
-  assert.deepEqual(keys, ["dsh-purge"]);
-  assert.equal(next.includes("dsh-purge@"), false);
-  assert.equal(next.split("\n").some((line) => line === "  dsh-purge: true"), true);
+  assert.deepEqual(keys, ["dsh-purge-pj"]);
+  assert.equal(next.includes("dsh-purge-pj@"), false);
+  assert.equal(next.split("\n").some((line) => line === "  dsh-purge-pj: true"), true);
   assert.equal(validateAllowBuildRewrite(next), true);
 });
 
@@ -187,9 +187,9 @@ test("固定 commit 安装：重写后只剩裸包名，历史 URL / 畸形键�
     "",
     "  .:",
     "    dependencies:",
-    "      dsh-purge:",
+    "      dsh-purge-pj:",
     `        specifier: ${COMMIT_URL}`,
-    `        version: dsh-purge@${COMMIT_URL}`,
+    `        version: dsh-purge-pj@${COMMIT_URL}`,
     "",
   ].join("\n"));
   const polluted = [
@@ -198,20 +198,20 @@ test("固定 commit 安装：重写后只剩裸包名，历史 URL / 畸形键�
     "",
     "allowBuilds:",
     "  ssh2: true",
-    `  dsh-purge@${MASTER_URL}: true`,
-    `  "dsh-purge@${COMMIT_URL}": true`,
-    "  dsh-purge@https: true",
+    `  dsh-purge-pj@${MASTER_URL}: true`,
+    `  "dsh-purge-pj@${COMMIT_URL}": true`,
+    "  dsh-purge-pj@https: true",
     "",
   ].join("\n");
   const next = rewritePnpmAllowBuilds(polluted, dir);
   const keys = next.split("\n").filter((line) => parseAllowBuildLine(line)).map((line) => parseAllowBuildLine(line).key);
-  assert.equal(keys.includes("dsh-purge"), true);
-  assert.equal(keys.includes(`dsh-purge@${COMMIT_URL}`), false);
-  assert.equal(keys.includes(`dsh-purge@${MASTER_URL}`), false);
-  assert.equal(keys.includes("dsh-purge@https"), false);
+  assert.equal(keys.includes("dsh-purge-pj"), true);
+  assert.equal(keys.includes(`dsh-purge-pj@${COMMIT_URL}`), false);
+  assert.equal(keys.includes(`dsh-purge-pj@${MASTER_URL}`), false);
+  assert.equal(keys.includes("dsh-purge-pj@https"), false);
   assert.equal(keys.includes("ssh2"), true);
   // 只写裸包名，不带引号
-  assert.equal(next.split("\n").some((line) => line === "  dsh-purge: true"), true);
+  assert.equal(next.split("\n").some((line) => line === "  dsh-purge-pj: true"), true);
 });
 
 test("幂等：健康文件重写输出等于输入，零写入", () => {
@@ -224,7 +224,7 @@ test("幂等：健康文件重写输出等于输入，零写入", () => {
     "allowBuilds:",
     "  cpu-features: true",
     "  ssh2: true",
-    "  dsh-purge: true",
+    "  dsh-purge-pj: true",
     "",
   ].join("\n");
   fs.writeFileSync(fp, healthy, "utf8");
@@ -241,16 +241,16 @@ test("幂等：健康文件重写输出等于输入，零写入", () => {
 test("幂等：第二次 ensure 不再写盘（自愈后收敛）", () => {
   const dir = withTempProfile();
   const fp = path.join(dir, "pnpm-workspace.yaml");
-  const polluted = `allowBuilds:\n  ssh2: true\n  dsh-purge@https: true\n  dsh-purge@1.1.81: true\n`;
+  const polluted = `allowBuilds:\n  ssh2: true\n  dsh-purge-pj@https: true\n  dsh-purge-pj@1.1.81: true\n`;
   fs.writeFileSync(fp, polluted, "utf8");
   const first = ensurePnpmAllowBuild(dir);
   assert.equal(first.wrote, true);
   const healed = fs.readFileSync(fp, "utf8");
   // 畸形历史键被清掉
-  assert.equal(healed.includes("dsh-purge@https"), false);
-  assert.equal(healed.includes("dsh-purge@1.1.81"), false);
+  assert.equal(healed.includes("dsh-purge-pj@https"), false);
+  assert.equal(healed.includes("dsh-purge-pj@1.1.81"), false);
   // 只剩裸包名
-  assert.equal(healed.includes("  dsh-purge: true"), true);
+  assert.equal(healed.includes("  dsh-purge-pj: true"), true);
   const second = ensurePnpmAllowBuild(dir);
   assert.equal(second.wrote, false);
   assert.equal(fs.readFileSync(fp, "utf8"), healed);
@@ -338,8 +338,8 @@ test("非空 flow 序列：宿主内容不动，返回 ok:false", () => {
   assert.equal(fs.readFileSync(fp, "utf8"), original);
 });
 
-test("已有 dsh-purge 本体行：零写入", () => {
-  const original = "- insert:\n    - id: dsh-purge\n      name: dsh-purge\n";
+test("已有 dsh-purge-pj 本体行：零写入", () => {
+  const original = "- insert:\n    - id: dsh-purge-pj\n      name: dsh-purge-pj\n";
   const dir = withTempPatch(original);
   const fp = path.join(dir, "cordis.patch.yml");
   const result = ensureProfileBodyInsert(dir);
