@@ -108,9 +108,11 @@ test("契约表统计与源码一致", () => {
   // 90 → 93：吸收上游 #188/#194 通用部分新增 #98（沙箱策略去品牌，带 marker）、
   // #99（技能徽章描述，带 marker）、#100（host 信号退出日志，带 marker）。
   // 93 → 95：合并上游 1.1.90 后带入 #92/#93（DESKTOP_HOST/MAIN_EXIT_TRACE，均带 marker）。
-  assert.equal(withMarkers, 95, "带 marker 的补丁数变了");
+  // 95 → 96：#103 DESKTOP_WELCOME_COOKIE_SWEEP（#209）带 marker。
+  assert.equal(withMarkers, 96, "带 marker 的补丁数变了");
   // 50 → 53：上面三条全部 optional。53 → 55：#92/#93 同为 optional。
-  assert.equal(contract.filter((entry) => entry.optional).length, 55, "optional 补丁数变了");
+  // 55 → 56：#103 同为 optional。
+  assert.equal(contract.filter((entry) => entry.optional).length, 56, "optional 补丁数变了");
   const regex = contract.reduce((sum, entry) => sum + entry.replacements.filter((item) => item.kind === "regexp").length, 0);
   // 6 → 7：吸收上游 #188 后 #77（REWIND_DROP_SENT_ON_APPEND）从「写死 5 行 + rc.2 补丁行」
   // 两条字面量改成一条锚首尾 + 非贪婪窗口的正则，官方在中间插行也照样命中。
@@ -120,7 +122,9 @@ test("契约表统计与源码一致", () => {
   // #94/#95 的补丁内容官方 0.2.1-rc.3 已经自己实现了（只是没带我们的注释），
   // 所以两条都加了「结果态」标记并改成 markersAny —— 否则它们会被误判成 drifted。
   // 23 → 24：上游 1.1.90 的 DESKTOP_MAIN_EXIT_TRACE 也是 markersAny。
-  assert.equal(anyMarkers, 24, "markersAny 的补丁数变了");
+  // 24 → 25：#28 LIANGSHEN_PHASE1_KEEP_INJECT 升级到 0.4.x minimal-prompt 布局时
+  // 改成 markersAny（新 file 首个 marker 命中即算已补，老 Set 形态保留为兼容候选）。
+  assert.equal(anyMarkers, 25, "markersAny 的补丁数变了");
 });
 
 test("layer 分布稳定（新增补丁要显式更新这张表）", () => {
@@ -128,17 +132,19 @@ test("layer 分布稳定（新增补丁要显式更新这张表）", () => {
   for (const entry of contract) counts.set(layerKey(entry), (counts.get(layerKey(entry)) ?? 0) + 1);
   // 25 → 27：#98/#99 都是提示词层；#100 落在代码层（55 → 56）。
   // 56 → 58：合并上游 1.1.90 带入 #92/#93（DESKTOP_HOST/MAIN_EXIT_TRACE，均为代码层）。
+  // 58 → 59：#103 DESKTOP_WELCOME_COOKIE_SWEEP 落在代码层。
   assert.equal(counts.get("提示词|Prompt"), 27);
-  assert.equal(counts.get("代码|Code"), 58);
+  assert.equal(counts.get("代码|Code"), 59);
   assert.equal(counts.get("工具|Tools"), 8);
   assert.equal(counts.get("0.1.5 兼容|0.1.5"), 1);
   assert.equal(counts.get("0.2.0 兼容|0.2.0"), 2);
 });
 
-test("desktop-only 补丁恰好只有 8 条且都声明了 surfaces", () => {
+test("desktop-only 补丁恰好只有 9 条且都声明了 surfaces", () => {
   const desktop = contract.filter((entry) => entry.surfaces.includes("desktop"));
   // 5 → 6：吸收上游 #194 后新增 #100（host 信号退出日志），同样只对桌面面生效。
   // 6 → 8：上游 1.1.90 新增 #92/#93（DESKTOP_HOST/MAIN_EXIT_TRACE），同样只对桌面面生效。
-  assert.equal(desktop.length, 8);
+  // 8 → 9：#103（#209 welcome cookie 清扫）同样只对桌面面生效。
+  assert.equal(desktop.length, 9);
   for (const entry of desktop) assert.deepEqual(entry.surfaces, ["desktop"]);
 });

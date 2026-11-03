@@ -1,3 +1,21 @@
+# 1.1.91
+
+## 中文
+
+- 版本 **1.1.91**。
+- **#209 桌面版一启动就弹 "desktop welcome: Web authentication failed"**：桌面壳每次启动都从宿主领一条**新名字**的 `dsh-auth-<随机>` cookie（`Max-Age` 30 天、`Path=/`、host_key `127.0.0.1`），没有任何回收。实测 8 天攒到 71 条 / 15,975 字节，Chromium 侧 `net.fetch` 带出的 `Cookie` 头超过宿主 Node HTTP 的 16KB `maxHeaderSize`，宿主直接回 **431 Request Header Fields Too Large**，`connectDesktopWelcome` 判 `!ok` 抛错并 SIGTERM 宿主，UI 弹"应用无法启动"。同一次握手用 Node 原生 `fetch`（不吃 cookie jar）永远拿 303，所以 `authenticateWebHost` 那一步始终正常，只有下一步炸 —— 这也是它难查的原因：curl、Chrome、宿主日志全都好看。
+  - 新增补丁 `#103 DESKTOP_WELCOME_COOKIE_SWEEP`（`desktop-shell`）：在 `connectDesktopWelcome` 之前把会话里所有 `dsh-auth-` 前缀的 cookie 按 origin 逐个 `cookies.remove()`，本次的 cookie 由紧随其后的握手重新写入。整段包在 `try/catch` 里，清理失败绝不阻断启动。
+  - 只认 `dsh-auth-` 前缀，不碰平台账号视图用的其它 cookie；平台视图本来就是独立 session 分区。
+- **验证**：`lib/core.js` 语法检查通过；补丁 #103 的 pattern 在已安装的 `resources/app/lib/main.js` 上命中 1 次、初始未标记；`node scripts/gen-patch-contract.mjs` 重新生成契约（patches=97）；重启桌面壳后 `net.fetch` 实测返回 200，`Network/Cookies` 里 `dsh-auth-*` 稳定在 1 条。
+
+## English
+
+- **1.1.91**.
+- **#209 the desktop shell died on every launch with "desktop welcome: Web authentication failed"**: each launch the shell collects a `dsh-auth-<random>` cookie with a **new name** (`Max-Age` 30 days, `Path=/`, host_key `127.0.0.1`) and nothing ever reclaims them. Measured: 71 cookies / 15,975 bytes over 8 days. The `Cookie` header Chromium's `net.fetch` then sends exceeds the host's 16KB Node HTTP `maxHeaderSize`, the host answers **431 Request Header Fields Too Large**, `connectDesktopWelcome` sees `!ok`, throws and SIGTERMs the host behind an "application could not start" dialog. The same handshake through Node's own `fetch` (no cookie jar) always returns 303, so `authenticateWebHost` passes and only the next step fails — which is why it hid so well: curl, Chrome and the host logs all look healthy.
+  - New patch `#103 DESKTOP_WELCOME_COOKIE_SWEEP` (`desktop-shell`): before `connectDesktopWelcome`, every `dsh-auth-` prefixed cookie in the session is removed by origin; the handshake immediately below re-acquires the one this launch needs. Wrapped in `try/catch` so a failed sweep can never block startup.
+  - Only the `dsh-auth-` prefix is touched; the platform account view keeps its own cookies in its own partition anyway.
+- **Verified**: `lib/core.js` parses; patch #103 matches exactly once in the installed `resources/app/lib/main.js` and was not previously marked; contract regenerated (`patches=97`); after relaunching the shell `net.fetch` returns 200 and `Network/Cookies` settles at a single `dsh-auth-*` entry.
+
 # 1.1.90
 
 ## 中文

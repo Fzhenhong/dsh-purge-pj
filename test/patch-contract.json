@@ -1070,6 +1070,7 @@
     "layer": "提示词",
     "layerEn": "Prompt",
     "files": [
+      "liangshen-minimal-prompt",
       "liangshen-tool-bootstrap"
     ],
     "surfaces": [],
@@ -1078,14 +1079,25 @@
     "skipIfMarked": false,
     "strictFiles": false,
     "markers": [
+      "// [dsh-purge] liangshen keep operator",
       "'dsh-purge:identity', 'dsh-purge', 'dsh-purge:rules', 'dsh-purge:post'",
       "startsWith(\"dshpg-\")"
     ],
-    "markersAny": false,
+    "markersAny": true,
     "replacements": [
       {
         "kind": "string",
+        "chars": 99,
+        "lines": 1
+      },
+      {
+        "kind": "string",
         "chars": 72,
+        "lines": 1
+      },
+      {
+        "kind": "string",
+        "chars": 78,
         "lines": 1
       },
       {
@@ -3447,6 +3459,33 @@
       {
         "kind": "string",
         "chars": 51,
+        "lines": 1
+      }
+    ]
+  },
+  {
+    "id": 103,
+    "name": "DESKTOP_WELCOME_COOKIE_SWEEP",
+    "layer": "代码",
+    "layerEn": "Code",
+    "files": [
+      "desktop-shell"
+    ],
+    "surfaces": [
+      "desktop"
+    ],
+    "optional": true,
+    "softSettle": false,
+    "skipIfMarked": true,
+    "strictFiles": false,
+    "markers": [
+      "[dsh-purge] welcome cookie sweep"
+    ],
+    "markersAny": false,
+    "replacements": [
+      {
+        "kind": "string",
+        "chars": 238,
         "lines": 1
       }
     ]
