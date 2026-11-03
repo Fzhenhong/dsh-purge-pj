@@ -563,8 +563,95 @@ async function runProbe(rest) {
   console.log("  答得出 = 注入送达；答不出 = 宿主没吃到注入文件（跑 --doctor 看）。摘除：--probe --clear");
 }
 
+/**
+ * --persona：persona 热切（吸收 ZiChuanLan/agent-purge 的 hot-switch 思路，
+ * 走我们的钉子/磁盘双通道）。CLI 与桌面插件进程不共享内存，切换只能走文件
+ * 信号：先写 <home>/personas/active.json（rev++），插件侧 refreshHungOperator
+ * 盯它的 mtime，rev 变了就把 persona 正文写成新钉——免重启生效。
+ *   dsh-purge --persona              列出 personas/ 与当前激活
+ *   dsh-purge --persona <名字>       切换
+ *   dsh-purge --persona --off        撤下（磁盘剥块 + 信号撤钉）
+ *   dsh-purge --persona --save <名>  把当前注入正文（剥 persona 块）存成 persona
+ *   dsh-purge --persona --rm <名>    删除 persona 文件
+ */
+async function runPersona(rest) {
+  const mod = await import("../lib/persona.js");
+  const dshHome = core.findDshHome();
+  try {
+    if (rest.includes("--off")) {
+      const st = mod.clearActivePersona(dshHome);
+      console.log(st.removed
+        ? `  ✓ persona 已撤下（rev ${st.rev}）；下一轮 assemble 落回磁盘基线，无需重启`
+        : `  - 盘上没有 persona 块（信号已撤，rev ${st.rev}）`);
+      return;
+    }
+    const saveIdx = rest.indexOf("--save");
+    if (saveIdx >= 0) {
+      const name = rest[saveIdx + 1];
+      if (!name) throw new Error("--save 后面要跟 persona 名字");
+      const r = mod.savePersonaFromInject(dshHome, name);
+      console.log(`  ✓ 已存 persona「${r.name}」（${r.chars} 字符）→ ${mod.personasDir(dshHome)}`);
+      return;
+    }
+    const rmIdx = rest.indexOf("--rm");
+    if (rmIdx >= 0) {
+      const name = rest[rmIdx + 1];
+      if (!name) throw new Error("--rm 后面要跟 persona 名字");
+      const r = mod.deletePersona(dshHome, name);
+      if (!r.removed) throw new Error(`persona 不存在：${name}`);
+      console.log(`  ✓ 已删除「${mod.sanitizePersonaName(name)}」${r.cleared ? "（它正激活，信号已一起撤下）" : ""}`);
+      return;
+    }
+    const nameArg = rest.find((a) => !a.startsWith("-"));
+    if (nameArg) {
+      const st = mod.switchPersona(dshHome, nameArg);
+      console.log(`  ✓ 已切换 persona →「${st.active}」（rev ${st.rev}）`);
+      console.log("  桌面端下一轮对话生效（免重启）；当前对话若没换，发一条新消息触发 pre-step 重装。");
+      console.log("  验证：dsh-purge --status 看 persona 行，或 dsh-purge --probe-request 抓真实请求。");
+      return;
+    }
+    const ps = mod.personaStatus(dshHome);
+    console.log(`  激活：${ps.active ?? "（无）"}${ps.active && !ps.consistent ? "  ⚠ 盘上没有对应 persona 块（重跑 --persona <名字>）" : ""}`);
+    console.log(`  信号：rev=${ps.rev}  ts=${ps.ts ? new Date(ps.ts).toISOString() : "-"}`);
+    const list = ps.personas;
+    if (!list.length) {
+      console.log("  （还没有 persona。先把注入调到想要的正文，再 --persona --save <名字> 存一份）");
+    } else {
+      for (const p of list) console.log(`  - ${p.name}  ${p.chars} 字符`);
+    }
+  } catch (e) {
+    console.log(`  [ERROR] ${e.message}`);
+    process.exitCode = 1;
+  }
+}
+
+/**
+ * --probe-request：请求级探针（吸收 ZiChuanLan/agent-purge 的 fake-provider
+ * 抓包思路）。本地假 provider 抓宿主真实请求体，验证 DSPROBE token 进了特权
+ * 层（system/developer）——比 --probe 的「人肉复述」硬一档，全程不出网。
+ * 宿主 CLI 用 DSH_PURGE_HOST_CLI 指定（默认自动找 PATH / 安装根的 dsh.cmd）。
+ */
+async function runProbeRequestCli(rest) {
+  const mod = await import("../lib/probe-request.js");
+  console.log("  起假 provider + 装探针 token + 独立 profile 跑一轮 headless 回合…（最长 ~50s）");
+  const r = await mod.runProbeRequest({
+    ask: rest.includes("--ask") ? rest[rest.indexOf("--ask") + 1] : undefined,
+    profile: rest.includes("--profile-name") ? rest[rest.indexOf("--profile-name") + 1] : undefined,
+    timeoutMs: 45000,
+  });
+  console.log(`  token=${r.token}  profile=${r.profile}  ${r.elapsedMs}ms`);
+  if (r.hit) {
+    console.log(`  ✓ 请求级送达：${r.protocol} 请求特权层命中 ${r.markerCount} 处（特权层 ${r.privilegedChars} 字符）`);
+  } else {
+    console.log(`  ✗ 请求里没看到 token（markerCount=${r.markerCount}${r.protocol ? ", protocol=" + r.protocol : ""}）`);
+    if (r.note) console.log(`  note: ${r.note}`);
+    process.exitCode = 1;
+  }
+  console.log("  详见 ~/.dsh/dsh-purge-probe-request.json");
+}
+
 async function main() {
-  const mode = args.find((a) => ["--apply", "--revert", "--uninstall", "--status", "--edit", "--help", "--scan", "--eval", "--doctor", "--reanchor", "--probe", "--repair-baks"].includes(a));
+  const mode = args.find((a) => ["--apply", "--revert", "--uninstall", "--status", "--edit", "--help", "--scan", "--eval", "--doctor", "--reanchor", "--probe", "--probe-request", "--persona", "--repair-baks"].includes(a));
 
   if (mode === "--scan") {
     await runScan(args.filter((a) => a !== "--scan"));
@@ -588,6 +675,16 @@ async function main() {
 
   if (mode === "--probe") {
     await runProbe(args.filter((a) => a !== "--probe"));
+    return;
+  }
+
+  if (mode === "--persona") {
+    await runPersona(args.filter((a) => a !== "--persona"));
+    return;
+  }
+
+  if (mode === "--probe-request") {
+    await runProbeRequestCli(args.filter((a) => a !== "--probe-request"));
     return;
   }
 
@@ -650,6 +747,9 @@ async function main() {
   dsh-purge --doctor     锚点体检：逐补丁报 applied/pending/drifted/missing（加 --all 扫全部宿主）
   dsh-purge --reanchor   钉漂移补丁的本地覆盖（候选行唯一才收；<补丁id> <rep#> [--dry] 单钉）
   dsh-purge --probe [--clear] 装运行时探针验证注入送达 / 摘除探针
+  dsh-purge --probe-request   请求级探针：假 provider 抓宿主请求体验证 token 进了特权层
+  dsh-purge --persona [名字|--off|--save 名|--rm 名]
+                              persona 热切：列出/切换/撤下/保存/删除（桌面端免重启生效）
   dsh-purge --repair-baks [--write] 从官方 app.asar 重建被烧掉的 .dshpurge.bak（默认只出计划）
   dsh-purge --help       帮助`);
     return;
