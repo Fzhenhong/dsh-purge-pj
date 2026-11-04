@@ -1,3 +1,25 @@
+# 1.1.96
+
+## 中文
+
+- 版本 **1.1.96**。
+- **别人新装不会再被这个问题波及，兼容目标改成按需注册。** 1.1.94 起给旧会话补的 `<provider>-purge` 兼容目标是**无条件**注册的，结果每个 provider 在模型选择器里都会多出一条 `xxx (兼容)` 副本——新用户根本没有 1.1.93 之前的脏数据，白吃这份噪音。
+  - 新增 `hasLegacyAliasSelection()`：启动时扫一遍 `$DSH_HOME/storages/session_projcache/sessions/*.json`，只有真的存在 `"provider": "<name>-purge"` 才注册兼容目标（缓存是带空格格式化的 JSON，正则按 `\s*` 匹配）。
+  - 新配置 `legacyAliasCompat`：`auto`（默认，按缓存判断）/ `on`（强制注册）/ `off`（永不注册）。`legacyAliasStateDir` 可覆盖扫描目录，供测试与特殊部署使用。
+  - 干净环境下的行为：`listProviders()` 只有真 provider，选择器里没有 `(兼容)` 副本，`state().compat` 为空数组。
+- **升级用户自愈路径**：脏会话能发消息 → 请求进来时 provider 被改回真名 → `lastUsed` 落库变干净 → 下次重启插件扫不到脏数据，兼容目标自动消失。
+- **验证**：`node --test` 367 tests / 366 pass / 1 skip / 0 fail（新增 3 条：干净缓存不注册、有脏数据自动注册、`off` 永不注册）。
+
+## English
+
+- **1.1.96**.
+- **Fresh installs are no longer affected; the compatibility target is now registered on demand.** Since 1.1.94 the `<provider>-purge` compatibility target was registered **unconditionally**, which added a `xxx (兼容)` duplicate of every provider to the model picker — brand-new users have none of the pre-1.1.93 dirty state and paid for that noise anyway.
+  - New `hasLegacyAliasSelection()`: at startup it scans `$DSH_HOME/storages/session_projcache/sessions/*.json` and only registers the compatibility target when a `"provider": "<name>-purge"` entry really exists (the cache is pretty-printed JSON, hence the `\s*` tolerance in the pattern).
+  - New `legacyAliasCompat` setting: `auto` (default, decide from the cache) / `on` (always register) / `off` (never). `legacyAliasStateDir` overrides the scanned directory for tests and unusual deployments.
+  - Clean environment: `listProviders()` contains only real providers, no `(兼容)` duplicates in the picker, and `state().compat` is an empty array.
+- **Self-healing for upgraders**: the dirty session can send again → the `agent/request` hook rewrites the provider back to the real name → `lastUsed` is persisted clean → on the next restart no dirty entry is found and the compatibility target disappears by itself.
+- **Verified**: `node --test` 367 tests / 366 pass / 1 skip / 0 fail (3 new: clean cache registers nothing, dirty cache auto-registers, `off` never registers).
+
 # 1.1.95
 
 ## 中文
