@@ -1,3 +1,25 @@
+# 1.1.98
+
+## 中文
+
+- 版本 **1.1.98**（文档与测试夹具调整，无功能变更）。
+- **清除本机 provider id 痕迹**：代码里本来就没有硬编码（`grep -rn "fzh" lib/ bin/ scripts/ presets/` 一直是 0），但测试夹具和升级记录里借用了本机的真实 provider 名。全部换成中性占位：
+  - `test/request-shape-inplace.test.mjs`：夹具 provider 由真实 id 改为 `demo` / `demo-purge`（51 处），断言的含义完全不变。
+  - `release-notes.md`：1.1.92–1.1.97 条目里叙述事故时用的真实 id 改为 `demo` / `demo-purge`（25 处）。
+  - 现在仓库里 `grep -rIn "fzh" .` 为 0 命中，任何 provider 名都不会出现在代码、文档或测试里。
+- **去掉日语 README**：删除 `README.ja.md`，语言导航收敛成「中文 | English」两项（`README.md` 中文为首页默认，`README.en.md` 英文）。`package.json` 的 `files` 与 `lib/update.js` 的 `COPY_NAMES` 本来就只列中英两份，无需改动。
+- **验证**：`node --test` 368 tests / 367 pass / 1 skip / 0 fail；`grep` 确认无残留学日语引用与 provider id 痕迹。
+
+## English
+
+- **1.1.98** (documentation and test-fixture housekeeping, no behaviour change).
+- **Remove traces of the local provider id**: the code never hardcoded it (`grep -rn "fzh" lib/ bin/ scripts/ presets/` has always been 0), but the test fixtures and the changelog borrowed the real provider name from the maintainer's machine. Everything now uses neutral placeholders:
+  - `test/request-shape-inplace.test.mjs`: fixtures use `demo` / `demo-purge` instead of the real id (51 occurrences); the assertions are unchanged.
+  - `release-notes.md`: the incident write-ups in 1.1.92–1.1.97 now use `demo` / `demo-purge` (25 occurrences).
+  - `grep -rIn "fzh" .` is now 0 hits — no provider name appears in code, docs or tests.
+- **Drop the Japanese README**: `README.ja.md` is removed and the language switcher is down to 中文 | English (`README.md` is the Chinese default GitHub renders, `README.en.md` is English). `package.json`'s `files` and `lib/update.js`'s `COPY_NAMES` already listed only the two, so nothing else changes.
+- **Verified**: `node --test` 368 tests / 367 pass / 1 skip / 0 fail; `grep` confirms no leftover Japanese references and no provider-id traces.
+
 # 1.1.97
 
 ## 中文
@@ -62,10 +84,10 @@
   if (cfg.aliasInCatalog !== true) return [];
   ```
 
-  原地替换时沿用了这个默认，于是**真 provider 的模型目录被清空**。宿主 `buildModelCatalog` 会 `.filter(group => group.models.length > 0)` 把整组扔掉，选择器拿 `lastUsed.provider`/`model` 在空目录里查不到，标签就回落成占位文案（会话本身是干净的：`lastUsed = {provider:"fzh", model:"deepseek-v4.1-flash"}`）。
+  原地替换时沿用了这个默认，于是**真 provider 的模型目录被清空**。宿主 `buildModelCatalog` 会 `.filter(group => group.models.length > 0)` 把整组扔掉，选择器拿 `lastUsed.provider`/`model` 在空目录里查不到，标签就回落成占位文案（会话本身是干净的：`lastUsed = {provider:"demo", model:"deepseek-v4.1-flash"}`）。
   - 原地替换的代理现在显式传 `aliasInCatalog: true`：它占的就是真 provider 的位置，模型目录必须照旧可见。
-  - `providerInfo` 的"别名后缀"改成只在**真别名**（provider id ≠ 源 provider）时才加：原地替换时 id 相同，名字原样返回，不会变成 `fzh (purge)`；兼容目标仍显示 `fzh (兼容)`。
-- **验证**：`node --test` 364 tests / 363 pass / 1 skip / 0 fail（新增 2 条：原地替换后 `listModels("fzh")` 非空且条目 provider 为 `fzh`；`providerInfo("fzh").name` 不含 `purge`/`兼容`）。
+  - `providerInfo` 的"别名后缀"改成只在**真别名**（provider id ≠ 源 provider）时才加：原地替换时 id 相同，名字原样返回，不会变成 `demo (purge)`；兼容目标仍显示 `demo (兼容)`。
+- **验证**：`node --test` 364 tests / 363 pass / 1 skip / 0 fail（新增 2 条：原地替换后 `listModels("demo")` 非空且条目 provider 为 `demo`；`providerInfo("demo").name` 不含 `purge`/`兼容`）。
 
 ## English
 
@@ -78,39 +100,39 @@
   if (cfg.aliasInCatalog !== true) return [];
   ```
 
-  The in-place swap inherited that default, so the **real provider's model catalog was wiped**. The host drops the whole group, the picker cannot resolve `lastUsed.provider`/`model` in an empty catalog, and the label falls back to the placeholder (the session itself is clean: `lastUsed = {provider:"fzh", model:"deepseek-v4.1-flash"}`).
+  The in-place swap inherited that default, so the **real provider's model catalog was wiped**. The host drops the whole group, the picker cannot resolve `lastUsed.provider`/`model` in an empty catalog, and the label falls back to the placeholder (the session itself is clean: `lastUsed = {provider:"demo", model:"deepseek-v4.1-flash"}`).
   - The in-place proxy now passes `aliasInCatalog: true` explicitly: it occupies the real provider's slot, so its catalog must stay visible.
-  - The alias suffix in `providerInfo` is now applied only for a **real alias** (provider id ≠ source provider). With an in-place swap the ids match, so the name stays `fzh` and never becomes `fzh (purge)`; the compatibility target still renders as `fzh (兼容)`.
-- **Verified**: `node --test` 364 tests / 363 pass / 1 skip / 0 fail (2 new: `listModels("fzh")` is non-empty and its entries carry provider `fzh`; `providerInfo("fzh").name` contains neither `purge` nor `兼容`).
+  - The alias suffix in `providerInfo` is now applied only for a **real alias** (provider id ≠ source provider). With an in-place swap the ids match, so the name stays `demo` and never becomes `demo (purge)`; the compatibility target still renders as `demo (兼容)`.
+- **Verified**: `node --test` 364 tests / 363 pass / 1 skip / 0 fail (2 new: `listModels("demo")` is non-empty and its entries carry provider `demo`; `providerInfo("demo").name` contains neither `purge` nor `兼容`).
 
 # 1.1.94
 
 ## 中文
 
 - 版本 **1.1.94**。
-- **1.1.93 之后旧会话变成"模型操作失败：session/model-unavailable: Select an available model before sending a message"**：1.1.93 不再注册 `<provider>-purge` 别名，但**之前**已经被落库成 `fzh-purge` 的会话还在。宿主的 `modelAvailable()` 拿 `selection.provider` 去 `llm.listProviders()` 里逐个对 id，对不上就抛这个错，消息连发都发不出去（表现就是"请选择模型"或这条英文报错）。
+- **1.1.93 之后旧会话变成"模型操作失败：session/model-unavailable: Select an available model before sending a message"**：1.1.93 不再注册 `<provider>-purge` 别名，但**之前**已经被落库成 `demo-purge` 的会话还在。宿主的 `modelAvailable()` 拿 `selection.provider` 去 `llm.listProviders()` 里逐个对 id，对不上就抛这个错，消息连发都发不出去（表现就是"请选择模型"或这条英文报错）。
   - 补一个**兼容目标**：原地替换成功后，额外把 `<provider>-purge` 注册成一个只做兼容的 provider，`listModels` 照旧转发给真 adapter，因此 `modelAvailable()` 能查到 id、也能查到模型，老会话立刻恢复可发送。
-  - 兼容目标的显示名带后缀，和真 provider 区分开（默认 `purge`，这里传 `兼容`，显示为 `fzh (兼容)`）。
+  - 兼容目标的显示名带后缀，和真 provider 区分开（默认 `purge`，这里传 `兼容`，显示为 `demo (兼容)`）。
   - 真正发请求时 `agent/request` 仍然把 `-purge` 改回真 provider，所以 `request/header` 落库的是干净值，脏数据用一次就自愈；新会话永远不会选到兼容目标。
   - 兼容目标随插件 dispose 一起释放；注册不上（老宿主没有 `listProviders`）不影响新会话。
-- **验证**：`node --test` 362 tests / 361 pass / 1 skip / 0 fail（新增 2 条兼容目标断言：`listProviders()` 含 `fzh-purge`、`listModels()` 仍列出 `deepseek-v4.1-flash`、显示名含"兼容"）；`state.state().compat` 暴露兼容列表便于排障。
+- **验证**：`node --test` 362 tests / 361 pass / 1 skip / 0 fail（新增 2 条兼容目标断言：`listProviders()` 含 `demo-purge`、`listModels()` 仍列出 `deepseek-v4.1-flash`、显示名含"兼容"）；`state.state().compat` 暴露兼容列表便于排障。
 
 ## English
 
 - **1.1.94**.
-- **After 1.1.93, older sessions failed with "session/model-unavailable: Select an available model before sending a message"**: 1.1.93 stopped registering the `<provider>-purge` alias, but sessions that had already persisted `fzh-purge` still reference it. The host's `modelAvailable()` compares `selection.provider` against every id from `llm.listProviders()` and throws when nothing matches, so the message cannot even be sent.
+- **After 1.1.93, older sessions failed with "session/model-unavailable: Select an available model before sending a message"**: 1.1.93 stopped registering the `<provider>-purge` alias, but sessions that had already persisted `demo-purge` still reference it. The host's `modelAvailable()` compares `selection.provider` against every id from `llm.listProviders()` and throws when nothing matches, so the message cannot even be sent.
   - A **compatibility target** is now registered after the in-place swap: `<provider>-purge` becomes a proxy-only provider whose `listModels` still delegates to the real adapter, so `modelAvailable()` finds both the id and the model and legacy sessions can send again.
-  - The compatibility target is labelled distinctly (default `purge`, here `兼容`, rendering as `fzh (兼容)`) so it never masquerades as the real provider.
+  - The compatibility target is labelled distinctly (default `purge`, here `兼容`, rendering as `demo (兼容)`) so it never masquerades as the real provider.
   - Real requests still have `-purge` rewritten back to the real provider by the `agent/request` hook, so the persisted `request/header` keeps the clean name and the dirty value heals after one use; new sessions never select the compatibility target.
   - The target is disposed with the plugin, and a host without `listProviders` simply skips it without affecting new sessions.
-- **Verified**: `node --test` 362 tests / 361 pass / 1 skip / 0 fail (2 new compatibility assertions: `listProviders()` contains `fzh-purge`, `listModels()` still lists `deepseek-v4.1-flash`, label contains 兼容); `state.state().compat` exposes the list for troubleshooting.
+- **Verified**: `node --test` 362 tests / 361 pass / 1 skip / 0 fail (2 new compatibility assertions: `listProviders()` contains `demo-purge`, `listModels()` still lists `deepseek-v4.1-flash`, label contains 兼容); `state.state().compat` exposes the list for troubleshooting.
 
 # 1.1.93
 
 ## 中文
 
 - 版本 **1.1.93**。
-- **装上插件、还没点「应用」就先把模型选择器搞坏**：插件为了做请求体整形，会把真实 provider 换成自己注册的别名 `<provider>-purge`（如 `fzh-purge`）。宿主的 `modelSelection` 投影把每条 `request/header` 的 `config.provider` **原样**落库成"上次用的模型"，于是别名被存了下来；重启后别名还没懒注册，模型选择器按 `lastUsed.provider` 查 provider 目录查不到，就显示占位文案「请选择模型」，且每次发消息都写回脏值、每次重启复发。**这跟有没有点「应用」无关**——应用只负责往宿主文件写代码补丁，别名是运行时那层装的，装完插件就已经在生效。
+- **装上插件、还没点「应用」就先把模型选择器搞坏**：插件为了做请求体整形，会把真实 provider 换成自己注册的别名 `<provider>-purge`（如 `demo-purge`）。宿主的 `modelSelection` 投影把每条 `request/header` 的 `config.provider` **原样**落库成"上次用的模型"，于是别名被存了下来；重启后别名还没懒注册，模型选择器按 `lastUsed.provider` 查 provider 目录查不到，就显示占位文案「请选择模型」，且每次发消息都写回脏值、每次重启复发。**这跟有没有点「应用」无关**——应用只负责往宿主文件写代码补丁，别名是运行时那层装的，装完插件就已经在生效。
   - 改为**原地替换 adapter**：`installRequestShape` 现在优先取 `llm.registration(provider)` 返回的注册表对象，直接把它上面的 `adapter` 换成代理。provider 名一个字都不改，因此 request header 永远干净、`lastUsed` 不再被污染，模型目录也不会多出一条同名项。
   - 写入后**读回校验**：有些宿主版本 `registration()` 每次拼临时对象返回，写进去等于没写；校验不过就还原并退回原来的别名注册，不会"以为装上了"。
   - 旧会话里已经存着 `-purge` 的，请求进来时会自动改回真 provider，脏值随下一次写入自愈。
@@ -121,7 +143,7 @@
 ## English
 
 - **1.1.93**.
-- **Installing the plugin broke the model picker before any 「应用」 click**: to shape request bodies the plugin swaps the real provider for its own alias `<provider>-purge` (e.g. `fzh-purge`). The host's `modelSelection` projection copies `config.provider` verbatim from every `request/header` into `lastUsed`, so the alias is durably stored as "the model the user last used". After a restart the alias is not registered yet, the picker's catalog lookup misses, and it renders the "请选择模型" placeholder — rewritten on every message, so it recurs on every restart. This is independent of whether 「应用」 was clicked: apply only writes host-file code patches, while the alias layer is installed at runtime as soon as the plugin loads.
+- **Installing the plugin broke the model picker before any 「应用」 click**: to shape request bodies the plugin swaps the real provider for its own alias `<provider>-purge` (e.g. `demo-purge`). The host's `modelSelection` projection copies `config.provider` verbatim from every `request/header` into `lastUsed`, so the alias is durably stored as "the model the user last used". After a restart the alias is not registered yet, the picker's catalog lookup misses, and it renders the "请选择模型" placeholder — rewritten on every message, so it recurs on every restart. This is independent of whether 「应用」 was clicked: apply only writes host-file code patches, while the alias layer is installed at runtime as soon as the plugin loads.
   - Now the adapter is **wrapped in place**: `installRequestShape` prefers the registration object returned by `llm.registration(provider)` and replaces its `adapter` property. The provider name never changes, so request headers stay clean, `lastUsed` is never polluted, and the model catalog gains no duplicate entry.
   - The swap is **read back and verified**: on host versions where `registration()` builds a throwaway object the write would be a no-op; if verification fails the original adapter is restored and the old alias registration is used instead, so the layer never silently pretends to be installed.
   - Sessions that already stored a `-purge` provider get rewritten back to the real name on the next request, so the dirty value heals itself.
@@ -134,7 +156,7 @@
 ## 中文
 
 - 版本 **1.1.92**。
-- **装完插件重启客户端，模型选择器变成「请选择模型」**：插件为了给请求体整形，会把自己注册成 `<provider>-purge`（如 `fzh-purge`）的**请求别名**，并在 `agent/request` 瀑布里把真实 provider 换成别名。问题出在持久化：宿主的 `dsh-api-session-controller` 投影在每一条 `request/header` 事件里把 `header.config.provider` **原样**写进 `modelSelection.lastUsed`，于是别名被落库成"用户上次用的模型"。重启后别名还没懒注册（要等第一次请求），模型选择器按 `lastUsed.provider` 去 provider 目录里查不到，就渲染成占位文案「请选择模型」；用户手动重选一遍才好，但下一次请求又把别名写回去，所以每次重启都复发。会话记录里能直接看到脏值：`"modelSelection":{... "lastUsed":{"provider":"fzh-purge", ...}}`。
+- **装完插件重启客户端，模型选择器变成「请选择模型」**：插件为了给请求体整形，会把自己注册成 `<provider>-purge`（如 `demo-purge`）的**请求别名**，并在 `agent/request` 瀑布里把真实 provider 换成别名。问题出在持久化：宿主的 `dsh-api-session-controller` 投影在每一条 `request/header` 事件里把 `header.config.provider` **原样**写进 `modelSelection.lastUsed`，于是别名被落库成"用户上次用的模型"。重启后别名还没懒注册（要等第一次请求），模型选择器按 `lastUsed.provider` 去 provider 目录里查不到，就渲染成占位文案「请选择模型」；用户手动重选一遍才好，但下一次请求又把别名写回去，所以每次重启都复发。会话记录里能直接看到脏值：`"modelSelection":{... "lastUsed":{"provider":"demo-purge", ...}}`。
   - 已有补丁 `#96/#97` 只修了「算不算模型切换」的判定和对话里的标签（`sameRoute` / `routeLabel`），没管落库这一步。
   - 新增补丁 `#104 MODEL_SELECTION_LASTUSED_ALIAS`（`dsh-api-session-controller/lib/types/model-selection-projection.js`）与 `#105 MODEL_SELECTION_LASTUSED_ALIAS_INLINE`（bundle 内联版 `lib/index.js`）：写 `lastUsed` 前把 provider 的 `-purge` 后缀剥掉。
   - 同一个补丁顺带把投影的 `view` 也做了剥离：老会话里已经落库的脏值**不用等下一次请求**，重启后立刻显示正常的 provider。
@@ -143,7 +165,7 @@
 ## English
 
 - **1.1.92**.
-- **After installing the plugin and restarting the client, the model picker showed "请选择模型" (select a model)**: to shape request bodies the plugin registers a **request alias** <code>&lt;provider&gt;-purge</code> (e.g. `fzh-purge`) and swaps the real provider to that alias inside the `agent/request` waterfall. The leak is in persistence: the host's `dsh-api-session-controller` projection copies `header.config.provider` verbatim into `modelSelection.lastUsed` on every `request/header` event, so the alias is durably stored as "the model the user last used". After a restart the alias is not registered yet (it is created lazily on the first request), the picker looks `lastUsed.provider` up in the provider catalog, misses, and renders the "select a model" placeholder. Re-picking by hand works until the next request writes the alias back, so it recurs on every restart. The dirty value is visible in the session state: `"modelSelection":{... "lastUsed":{"provider":"fzh-purge", ...}}`.
+- **After installing the plugin and restarting the client, the model picker showed "请选择模型" (select a model)**: to shape request bodies the plugin registers a **request alias** <code>&lt;provider&gt;-purge</code> (e.g. `demo-purge`) and swaps the real provider to that alias inside the `agent/request` waterfall. The leak is in persistence: the host's `dsh-api-session-controller` projection copies `header.config.provider` verbatim into `modelSelection.lastUsed` on every `request/header` event, so the alias is durably stored as "the model the user last used". After a restart the alias is not registered yet (it is created lazily on the first request), the picker looks `lastUsed.provider` up in the provider catalog, misses, and renders the "select a model" placeholder. Re-picking by hand works until the next request writes the alias back, so it recurs on every restart. The dirty value is visible in the session state: `"modelSelection":{... "lastUsed":{"provider":"demo-purge", ...}}`.
   - The existing patches `#96/#97` only fixed the "is this a model switch" comparison and the in-conversation label (`sameRoute` / `routeLabel`); persistence was left alone.
   - New patches `#104 MODEL_SELECTION_LASTUSED_ALIAS` (`dsh-api-session-controller/lib/types/model-selection-projection.js`) and `#105 MODEL_SELECTION_LASTUSED_ALIAS_INLINE` (the bundle-inlined copy in `lib/index.js`) strip the `-purge` suffix before `lastUsed` is written.
   - The same patches also strip it in the projection's `view`, so values already stored by older sessions render correctly immediately after restart, without waiting for the next request.
