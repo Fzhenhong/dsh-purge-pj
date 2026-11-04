@@ -154,7 +154,7 @@ test("新装用户：缓存里没有 -purge 脏选择，就不注册兼容目标
   assert.equal(host.llm.listProviders().length, 1);
 });
 
-test("老用户：缓存里有 <provider>-purge 时一次性迁回真名，不再注册可见别名", async () => {
+test("老用户：当轮注册兼容目标让老会话能发，同时把缓存迁回真名（下次启动就干净）", async () => {
   const { mkdtempSync, writeFileSync, readFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
@@ -165,11 +165,17 @@ test("老用户：缓存里有 <provider>-purge 时一次性迁回真名，不�
   const host = fakeHost("demo");
   const state = installRequestShape(host.ctx, { requestShape: "auto", legacyAliasStateDir: dir });
   await host.waterfall({ provider: "demo", model: "deepseek-v4.1-flash" });
-  assert.equal(host.adapters.has("demo-purge"), false, "迁干净之后不该再出现可见的 (兼容) 副本");
-  assert.deepEqual(state.state().compat, []);
+  assert.equal(host.adapters.has("demo-purge"), true, "当轮必须有兼容目标，否则老会话发不出去");
+  assert.deepEqual(state.state().compat, ["demo-purge"]);
   const after = readFileSync(file, "utf8");
   assert.match(after, /"provider": "demo"/, "缓存里的 -purge 应就地迁回真名");
   assert.doesNotMatch(after, /demo-purge/, "缓存里不该再有 -purge 残留");
+
+  // 模拟重启：同一份（已迁干净的）缓存，新装一次就不该再有可见别名
+  const restarted = fakeHost("demo");
+  const state2 = installRequestShape(restarted.ctx, { requestShape: "auto", legacyAliasStateDir: dir });
+  assert.deepEqual(state2.state().compat, [], "第二次启动缓存已干净，选择器不该再有 (兼容)");
+  assert.equal(restarted.adapters.has("demo-purge"), false);
 });
 
 test("按 provider 判断：别的 provider 的 -purge 残留不连累本 provider", async () => {
@@ -185,13 +191,17 @@ test("按 provider 判断：别的 provider 的 -purge 残留不连累本 provid
   assert.deepEqual(state.state().compat, []);
 });
 
-test("legacyAliasSources 按 provider 归组，不再是一个全局布尔", async () => {
+test("legacyAliasSources 按 provider 归组，只认 modelSelection", async () => {
   const { mkdtempSync, writeFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
   const { legacyAliasSources } = await import("../lib/request-shape.js");
   const dir = mkdtempSync(join(tmpdir(), "purge-src-"));
-  writeFileSync(join(dir, "a.json"), JSON.stringify({ x: { provider: "demo-purge" }, y: { provider: "magpie-purge" } }, null, 2), "utf8");
+  writeFileSync(join(dir, "a.json"), JSON.stringify({
+    modelSelection: { val: { lastUsed: { provider: "demo-purge" }, pending: { provider: "magpie-purge" } } },
+  }, null, 2), "utf8");
+  // 只有历史请求记录、没有选择器状态的文件不算脏
+  writeFileSync(join(dir, "b.json"), JSON.stringify({ record: { rows: { messages: [{ header: { config: { provider: "openai-purge" } } }] } } }, null, 2), "utf8");
   assert.deepEqual([...legacyAliasSources(dir)].sort(), ["demo", "magpie"]);
   assert.equal(legacyAliasSources(dir).has("openai"), false);
 });
@@ -202,14 +212,15 @@ test("migrateLegacyAlias 只迁指定 provider，其余残留原样保留", asyn
   const { join } = await import("node:path");
   const { migrateLegacyAlias } = await import("../lib/request-shape.js");
   const dir = mkdtempSync(join(tmpdir(), "purge-mig-"));
-  const file = join(dir, "s.json");
-  writeFileSync(file, JSON.stringify({ a: { provider: "demo-purge" }, b: { provider: "magpie-purge" } }, null, 2), "utf8");
+  const a = join(dir, "a.json");
+  const b = join(dir, "b.json");
+  writeFileSync(a, JSON.stringify({ modelSelection: { val: { lastUsed: { provider: "demo-purge" } } } }, null, 2), "utf8");
+  writeFileSync(b, JSON.stringify({ modelSelection: { val: { lastUsed: { provider: "magpie-purge" } } } }, null, 2), "utf8");
   assert.equal(migrateLegacyAlias(dir, "demo"), true, "demo 迁干净返回 true");
-  const after = readFileSync(file, "utf8");
-  assert.match(after, /"provider": "demo"/);
-  assert.match(after, /"provider": "magpie-purge"/, "别的 provider 的残留不动");
+  assert.match(readFileSync(a, "utf8"), /"provider": "demo"/);
+  assert.match(readFileSync(b, "utf8"), /"provider": "magpie-purge"/, "别的 provider 的残留不动");
   assert.equal(migrateLegacyAlias(dir, "magpie"), true);
-  assert.doesNotMatch(readFileSync(file, "utf8"), /-purge/);
+  assert.doesNotMatch(readFileSync(a, "utf8") + readFileSync(b, "utf8"), /-purge/);
   assert.equal(migrateLegacyAlias(dir, "demo"), true, "没有残留时也算干净");
 });
 
@@ -233,4 +244,46 @@ test("provider 名不写死：换任何 id（openai）都走同一条原地替�
   assert.ok(host.llm.listProviders().some((p) => p.id === "openai-purge"), "兼容目标跟着 provider 走");
   assert.deepEqual(state.state().compat, ["openai-purge"]);
   assert.equal(state.state().aliases.includes("openai"), true);
+});
+
+test("冷启动：装完就为缓存里的 -purge 脏选择预热（不用等第一条请求）", async () => {
+  const { mkdtempSync, writeFileSync, readFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = mkdtempSync(join(tmpdir(), "purge-cold-"));
+  const file = join(dir, "s.json");
+  writeFileSync(file, JSON.stringify({ modelSelection: { val: { lastUsed: { provider: "demo-purge", model: "m" } } } }, null, 2), "utf8");
+  const host = fakeHost("demo");
+  const state = installRequestShape(host.ctx, { requestShape: "auto", legacyAliasStateDir: dir });
+  assert.deepEqual(state.state().compat, ["demo-purge"], "宿主在第一条请求前就会查目录，必须已经注册");
+  assert.equal(host.adapters.has("demo-purge"), true);
+  assert.match(readFileSync(file, "utf8"), /"provider": "demo"/, "顺手把缓存迁干净");
+});
+
+test("迁移只改 modelSelection，历史请求记录原样保留", async () => {
+  const { mkdtempSync, writeFileSync, readFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { migrateLegacyAlias } = await import("../lib/request-shape.js");
+  const dir = mkdtempSync(join(tmpdir(), "purge-history-"));
+  const file = join(dir, "s.json");
+  writeFileSync(file, JSON.stringify({
+    modelSelection: { val: { lastUsed: { provider: "demo-purge", model: "m" } } },
+    record: { rows: { messages: [{ header: { config: { provider: "demo-purge", model: "m" } }, text: "历史请求" }] } },
+    other: { provider: "demo-purge" },
+  }, null, 2), "utf8");
+  assert.equal(migrateLegacyAlias(dir, "demo"), true);
+  const after = JSON.parse(readFileSync(file, "utf8"));
+  assert.equal(after.modelSelection.val.lastUsed.provider, "demo", "选择器状态要迁");
+  assert.equal(after.record.rows.messages[0].header.config.provider, "demo-purge", "历史记录不许改");
+  assert.equal(after.other.provider, "demo-purge", "无关字段不许改");
+});
+
+test("真 provider 的 id 就叫 xxx-purge 时，不会被当成插件别名", async () => {
+  const host = fakeHost("demo-purge");
+  installRequestShape(host.ctx, { requestShape: "auto", legacyAliasCompat: "off" });
+  const out = await host.waterfall({ provider: "demo-purge", model: "m" });
+  assert.equal(out.provider, "demo-purge", "header 不能被截成 demo");
+  assert.notEqual(host.llm.registration("demo-purge").adapter, host.real, "整形层照样要挂上");
+  assert.equal(host.adapters.has("demo"), false, "不该凭空造一个 demo provider");
 });

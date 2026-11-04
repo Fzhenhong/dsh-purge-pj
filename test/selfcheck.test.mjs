@@ -101,7 +101,7 @@ test("symlink 指向 repoRoot → ok", async (t) => {
   const linkDir = path.join(home, "profiles", "desktop", "node_modules");
   fs.mkdirSync(linkDir, { recursive: true });
   try {
-    fs.symlinkSync(target, path.join(linkDir, "dsh-purge"), "junction");
+    fs.symlinkSync(target, path.join(linkDir, "dsh-purge-pj"), "junction");
   } catch {
     // 某些环境不允许 junction —— 跳过此用例
     return;

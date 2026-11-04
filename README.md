@@ -4,7 +4,7 @@
 
 <h1 align="center">⚔️ DeepSeek Harness 网络安全红队工具（dsh-purge-pj）</h1>
 
-<p align="center"><strong>Version 1.1.99</strong></p>
+<p align="center"><strong>Version 1.1.100</strong></p>
 
 <p align="center">
   <em>DeepSeek Harness 破甲：让所有模型都能破甲，不同模型可换不同提示词；默认提示词面向国模「小码酱」。Jailbreak for every model — swap prompts per model. 求 Star 收藏 ⭐ 如要二开，请查看署名要求部分</em>
@@ -58,7 +58,7 @@
 
 ## 介绍
 
-**dsh-purge-pj** 是装在本机官方 [DeepSeek Harness](https://www.deepseek.com/harness/) 上的网络安全红队评测插件。当前 **1.1.99** 已适配 **DSH 0.2.1-rc.2**（0.2.0 仍可用）。**不支持 DSH 0.2.1-rc.3 及更新的 rc。** 官方 **Web**（`dsh web`）和官方 **桌面端**（EXE）都支持，两边分开装、分开应用。
+**dsh-purge-pj** 是装在本机官方 [DeepSeek Harness](https://www.deepseek.com/harness/) 上的网络安全红队评测插件。当前 **1.1.100** 已适配 **DSH 0.2.1-rc.2**（0.2.0 仍可用）。**不支持 DSH 0.2.1-rc.3 及更新的 rc。** 官方 **Web**（`dsh web`）和官方 **桌面端**（EXE）都支持，两边分开装、分开应用。
 
 Harness 不只是把问题交给模型。它还会在运行时改提示词、审批门、沙箱和会话格式。只看「模型答不答」，会把宿主拦截误当成模型拒绝。这个插件在你自己的安装里把这两层分开，用来做受控评测，也用来看默认策略该不该收紧。
 
@@ -96,8 +96,8 @@ Harness 不只是把问题交给模型。它还会在运行时改提示词、审
 
 - **按需叶子注入**：常驻提示词只留骨架（约 1.5k token），任务域相关的规则条目按需挂上，
   整体从约 5.7k 降到 2.4~4.9k；判不出任务域就放行全文，不猜。
-- **补丁契约表 + 75 条离线断言 + CI**：`npm test` 不需要装 DSH 也能跑，`npm run contract:check`
-  校验 87 条补丁的元数据与源码逐字节一致。这套断言当场抓出过一条长期误报 `applied` 的补丁。
+- **补丁契约表 + 离线断言 + CI**：`npm test` 不需要装 DSH 也能跑，`npm run contract:check`
+  校验 99 条补丁的元数据与源码逐字节一致。这套断言当场抓出过一条长期误报 `applied` 的补丁。
 - **备份只写真原件**：`backupAll()` 原先在备份文件缺失时，会用「已打补丁的内容」补一份假备份，
   还原时什么都没还原却报成功。现在会先确认「所有相关补丁在这个文件上确实改不动」才跳过。
 
@@ -161,9 +161,9 @@ Harness 不只是把问题交给模型。它还会在运行时改提示词、审
 
 ## 适配范围
 
-**1.1.99 已适配 DSH 0.2.1-rc.2**，0.2.0 仍可用。不要拿它去打 0.1.x。
+**1.1.100 已适配 DSH 0.2.1-rc.2**，0.2.0 仍可用。不要拿它去打 0.1.x。
 
-- **dsh 0.2.1-rc.2**（官方桌面 / 官方 `dsh web`）：用 **1.1.99**。已修 `{{cwd}}` / `[cwd]` 整轮失败、补丁 #40 命中、`toolFilter` 废弃、`dsh-tools` 解析、hostFs fd、桌面换包自杀、`file:` 归档更新、Ctrl+Enter 插话。
+- **dsh 0.2.1-rc.2**（官方桌面 / 官方 `dsh web`）：用 **1.1.100**。已修 `{{cwd}}` / `[cwd]` 整轮失败、补丁 #40 命中、`toolFilter` 废弃、`dsh-tools` 解析、hostFs fd、桌面换包自杀、`file:` 归档更新、Ctrl+Enter 插话。
 - **dsh 0.2.0-rc.2**：用 **1.1.40** 及以上；本页这档也能装。
 - **dsh 0.1.7**（含 rc.1 / rc.2）：用 **1.1.39** 及更早 —— 在 [Releases](https://github.com/Fzhenhong/dsh-purge-pj/releases) 里选对应标签。
 - **不支持 dsh 0.2.1-rc.3 / rc.4 及更新。** 宿主对不上时补丁会显示待应用或跳过，不会乱改文件。请退回 **0.2.1-rc.2** 再用本插件。
@@ -238,7 +238,7 @@ node node_modules/dsh-purge-pj/scripts/ensure-profile-bundle.mjs
 - 桌面客户端也可以点按钮（`dsh://` 唤起，下的仍是同一份压缩包）。
 
 <p align="center">
-  <a href="dsh://plugin/install?id=dsh-purge-pj&name=dsh-purge-pj&version=1.1.99&repo=Fzhenhong%2Fdsh-purge-pj&permissions=%E7%B3%BB%E7%BB%9F%E6%8F%90%E7%A4%BA%E8%AF%8D%E6%B3%A8%E5%85%A5%2C%E6%9C%AC%E6%9C%BA%E8%A1%A5%E4%B8%81%2C%E8%AE%BE%E7%BD%AE%E9%A1%B5&downloadUrl=https%3A%2F%2Fcodeload.github.com%2FFzhenhong%2Fdsh-purge-pj%2Ftar.gz%2Frefs%2Fheads%2Fmaster"><strong>唤起客户端一键安装</strong></a>
+  <a href="dsh://plugin/install?id=dsh-purge-pj&name=dsh-purge-pj&version=1.1.100&repo=Fzhenhong%2Fdsh-purge-pj&permissions=%E7%B3%BB%E7%BB%9F%E6%8F%90%E7%A4%BA%E8%AF%8D%E6%B3%A8%E5%85%A5%2C%E6%9C%AC%E6%9C%BA%E8%A1%A5%E4%B8%81%2C%E8%AE%BE%E7%BD%AE%E9%A1%B5&downloadUrl=https%3A%2F%2Fcodeload.github.com%2FFzhenhong%2Fdsh-purge-pj%2Ftar.gz%2Frefs%2Fheads%2Fmaster"><strong>唤起客户端一键安装</strong></a>
 </p>
 
 **第 3 步 —— 重启宿主。** 只把插件写进 profile **还不会**改 `@deepseek-ai`。完全退出再打开刚装的那个宿主（Web：停掉 `dsh web` 再开；桌面：托盘也要退出，再开 exe）。

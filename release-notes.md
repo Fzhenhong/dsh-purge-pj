@@ -1,3 +1,35 @@
+# 1.1.100
+
+## 中文
+
+- 版本 **1.1.100**。把上一轮审计出的问题逐个修掉（审计报告见对话记录，P1/P2/P3 共 10 条）。
+- **P1 冷启动不再漏注册兼容目标**：以前只有收到 `agent/request` 才会 `tryInstall`，宿主重启后老会话的 `lastUsed.provider` 还是 `<p>-purge`，`modelAvailable()` 在请求发出前就判死，钩子根本没机会跑。现在安装时先扫一遍缓存，对确实有脏选择的 provider 立刻预热；`llm/adapters-updated` 也会重跑预热。
+- **P1 `--probe` 的 fixture 目录名修正**：`lib/probe-request.js` 建的是 `node_modules/dsh-purge`，插件名却是 `dsh-purge-pj`，探针 profile 里插件解析不到，`--probe` 会假报"没送达"。
+- **P1 卸载能清干净**：`lib/uninstall.js` 两处仍拼 `node_modules/dsh-purge`，导致 `node_modules/dsh-purge-pj` 不进清理列表。
+- **P2 便携版 DSH home**：`lib/index.js` 现在把 `core.findDshHome()` 算出的 `storages/session_projcache/sessions` 传给 request-shape；不再只认 `DSH_HOME` / `~/.dsh`（便携桌面端的 `.dsh` 在 EXE 旁边）。
+- **P2 迁移只改选择器状态**：`migrateLegacyAlias` 改成 JSON 解析后只改 `modelSelection` 子树里的 provider，历史请求记录（`header.config.provider`）和无关字段原样保留；`legacyAliasSources` 同样只认 `modelSelection`，不再把"日志里出现过"当成"选择器里选着"。
+- **P2 并发写保护**：迁移写回前再读一遍原文，内容被宿主改过就跳过，不拿旧快照覆盖新状态。
+- **P2 自愈语义理顺**：检测到脏选择的这一次运行仍注册兼容目标（宿主可能已把老会话读进内存），同时把缓存迁回真名；下次启动缓存已干净 → 不再出现 "(兼容)" 条目。
+- **P3 `xxx-purge` 真 provider**：`isOwnAlias` 不再只看后缀，先查注册表——注册表里真有这个 id 就当真 provider；没有 `listProviders` 的老宿主退回 `registration()` 探测。
+- **P3 重命名残留**：`lib/redteam/ui.js` 的 name（改为 `dsh-purge-pj-redteam-ui`）、技能候选路径、`lib/redteam/index.js` 日志串、`lib/redteam/client.js` 占位 id；`lib/selfcheck.js` 的 desktop 接入检查也改看 `node_modules/dsh-purge-pj`。
+- **P3 文档**：README 补丁数 87 → **99**，去掉过期的"75 条离线断言"；`hasLegacyAliasSelection` 注释标明它已委托给 `legacyAliasSources`。
+- **测试**：374 tests / 373 pass / 1 skip / 0 fail。新增 6 条（冷启动预热、迁移只动 modelSelection、`xxx-purge` 真 provider、当轮别名 + 次轮干净、按 provider 归组只认 modelSelection、selfcheck 新路径）。
+
+## English
+
+- **1.1.100**. Fixes every finding from the previous audit round (10 items across P1/P2/P3).
+- **P1 cold start no longer misses the compat target**: previously `tryInstall` only ran on `agent/request`, so after a host restart an old session whose `lastUsed.provider` was still `<p>-purge` failed `modelAvailable()` before any request could reach the hook. The plugin now scans the cache at install time and warms exactly the providers that actually have a dirty selection; `llm/adapters-updated` re-runs the warm-up as well.
+- **P1 `--probe` fixture path fixed**: `lib/probe-request.js` created `node_modules/dsh-purge` while the package is `dsh-purge-pj`, so the probe profile could not resolve the plugin and `--probe` reported a false "not delivered".
+- **P1 uninstall now removes the plugin**: `lib/uninstall.js` still joined `node_modules/dsh-purge` in two places, so `node_modules/dsh-purge-pj` never entered the cleanup list.
+- **P2 portable DSH home**: `lib/index.js` now passes `core.findDshHome()`-derived `storages/session_projcache/sessions` into request-shape instead of relying on `DSH_HOME` / `~/.dsh` only (portable desktop keeps `.dsh` beside the EXE).
+- **P2 migration only touches selection state**: `migrateLegacyAlias` now parses the JSON and rewrites providers only inside `modelSelection`; historical request records (`header.config.provider`) and unrelated fields are left alone. `legacyAliasSources` likewise only counts `modelSelection` entries, so "appeared in a log" no longer looks like "currently selected".
+- **P2 concurrent-write guard**: before renaming the temp file back, the migration re-reads the file; if the host changed it meanwhile, the write is skipped instead of clobbering newer state.
+- **P2 healing semantics**: the run that detects a dirty selection keeps the compat target (the host may already hold the old selection in memory) and also migrates the cache; the next start sees a clean cache and the "(兼容)" entry is gone.
+- **P3 real providers named `xxx-purge`**: `isOwnAlias` checks the registry first — if the id is a genuine registered provider it is treated as one; hosts without `listProviders` fall back to `registration()` probing.
+- **P3 rename leftovers**: `lib/redteam/ui.js` name (now `dsh-purge-pj-redteam-ui`), its skill candidate path, the `lib/redteam/index.js` log label, and the `lib/redteam/client.js` placeholder id; `lib/selfcheck.js` now checks `node_modules/dsh-purge-pj`.
+- **P3 docs**: README patch count 87 → **99**, removed the stale "75 offline assertions"; `hasLegacyAliasSelection` documented as delegating to `legacyAliasSources`.
+- **Tests**: 374 tests / 373 pass / 1 skip / 0 fail. Six added (cold-start warm-up, migration only touches modelSelection, real `xxx-purge` provider, alias kept for the healing run and gone on the next, per-provider grouping over modelSelection only, selfcheck new path).
+
 # 1.1.99
 
 ## 中文
