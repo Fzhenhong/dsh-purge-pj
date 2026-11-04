@@ -1,3 +1,33 @@
+# 1.1.97
+
+## 中文
+
+- 版本 **1.1.97**（本轮只动文档，不改代码）。
+- **别人怎么装：README 三份（中/英/日）的安装段整体改成 fork 自己的坐标。** 之前这些段落还写着上游的 `YuJunZhiXue/dsh-purge`：照抄会装到上游、目录名对不上、完成标志也校验不出来。
+  - 三条路径全部改成 `Fzhenhong/dsh-purge-pj`：
+    1. 有 `dsh`：`dsh plugin --profile web|desktop add https://codeload.github.com/Fzhenhong/dsh-purge-pj/tar.gz/refs/heads/master`
+    2. 只有 pnpm：进 `$DSH_HOME/profiles/<web|desktop>` 后 `pnpm add https://codeload.github.com/Fzhenhong/dsh-purge-pj/tar.gz/refs/heads/master`（pnpm 11/12 要带 `--allow-build=dsh-purge-pj`）
+    3. 手动：`git clone https://github.com/Fzhenhong/dsh-purge-pj.git "$DSH_HOME/plugins/dsh-purge-pj"`，再改 profile 的 `dependencies` 与 `bundles`
+  - 包名/目录名/完成标志统一成 `dsh-purge-pj`：`node_modules/dsh-purge-pj/package.json`、`bundles` 里的 `"dsh-purge-pj"`、`cordis.patch.yml` 里的 `id: dsh-purge-pj`、CLI 命令 `dsh-purge-pj --status`。
+  - `dsh://` 一键安装链接的 `id`/`name`/`repo`/`downloadUrl` 同步换成新仓库与新版本号。
+  - 市场/Hub 徽章指向本仓库 Releases；`already queued` 报错文案改成新包名。
+  - 刻意没动：`/dsh-purge/*` HTTP 路由、`$DSH_HOME/dsh-purge` 数据目录、`/purge` 系列聊天命令，以及 README 里对**别人**仓库（`dsh-purge-plus`、`dsh-purge-flash`、`dsh-purge-021rc2`）的引用。
+- **验证**：`node --test` 368 tests / 367 pass / 1 skip / 0 fail（文档改动不影响代码）。
+
+## English
+
+- **1.1.97** (documentation only, no code change).
+- **How others install: the install sections of all three READMEs (zh/en/ja) now use this fork's own coordinates.** They still pointed at the upstream `YuJunZhiXue/dsh-purge`, so copy-pasting installed upstream, produced mismatched directory names, and made the completion checks fail.
+  - All three paths now target `Fzhenhong/dsh-purge-pj`:
+    1. with `dsh`: `dsh plugin --profile web|desktop add https://codeload.github.com/Fzhenhong/dsh-purge-pj/tar.gz/refs/heads/master`
+    2. pnpm only: `cd $DSH_HOME/profiles/<web|desktop>` then `pnpm add https://codeload.github.com/Fzhenhong/dsh-purge-pj/tar.gz/refs/heads/master` (pnpm 11/12 needs `--allow-build=dsh-purge-pj`)
+    3. manual: `git clone https://github.com/Fzhenhong/dsh-purge-pj.git "$DSH_HOME/plugins/dsh-purge-pj"`, then edit the profile's `dependencies` and `bundles`
+  - Package/directory names and completion markers are unified on `dsh-purge-pj`: `node_modules/dsh-purge-pj/package.json`, `"dsh-purge-pj"` in `bundles`, `id: dsh-purge-pj` in `cordis.patch.yml`, and the `dsh-purge-pj --status` CLI.
+  - The `dsh://` one-click install link's `id`/`name`/`repo`/`downloadUrl` follow the new repo and version.
+  - Market/Hub badges point at this repository's Releases; the `already queued` error text uses the new package name.
+  - Deliberately untouched: the `/dsh-purge/*` HTTP routes, the `$DSH_HOME/dsh-purge` data directory, the `/purge` chat commands, and every reference to **other people's** repositories (`dsh-purge-plus`, `dsh-purge-flash`, `dsh-purge-021rc2`).
+- **Verified**: `node --test` 368 tests / 367 pass / 1 skip / 0 fail (docs-only change).
+
 # 1.1.96
 
 ## 中文
