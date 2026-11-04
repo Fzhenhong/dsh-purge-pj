@@ -44,14 +44,25 @@ jobs:
             echo "release-notes.md 第一行必须是 # ${version}，现在是: ${first}"
             exit 1
           fi
-          zip="dsh-purge-${version}.zip"
+          # 只取当前版本段落（"# <version>" 到下一个 "# 1." 之前），
+          # 别把历史所有版本的记录整篇塞进 Release 正文。
+          notes="$(awk -v v="${version}" '
+            /^# / { if ($0 == "# " v) { on = 1; next } else if (on) { exit } }
+            on { print }
+          ' release-notes.md)"
+          if [ -z "$(printf '%s' "$notes" | tr -d '[:space:]')" ]; then
+            echo "release-notes.md 里没有 # ${version} 段落"
+            exit 1
+          fi
+          zip="dsh-purge-pj-${version}.zip"
+          prefix="dsh-purge-pj-${version}/"
           if git rev-parse -q --verify "refs/tags/${tag}^{}" >/dev/null; then
             commit="$(git rev-parse "refs/tags/${tag}^{}")"
-            git archive --format=zip --prefix="dsh-purge-${version}/" --output="$zip" "$commit"
-            gh release create "$tag" --title "$tag" --notes-file release-notes.md
+            git archive --format=zip --prefix="$prefix" --output="$zip" "$commit"
+            gh release create "$tag" --title "$tag" --notes "$notes"
           else
-            git archive --format=zip --prefix="dsh-purge-${version}/" --output="$zip" HEAD
-            args=(release create "$tag" --target "$GITHUB_SHA" --title "$tag" --notes-file release-notes.md)
+            git archive --format=zip --prefix="$prefix" --output="$zip" HEAD
+            args=(release create "$tag" --target "$GITHUB_SHA" --title "$tag" --notes "$notes")
             case "$version" in
               *beta*|*alpha*|*rc*) args+=(--prerelease) ;;
             esac
@@ -59,4 +70,4 @@ jobs:
           fi
           test -s "$zip"
           gh release upload "$tag" "$zip" --clobber
-          echo "published https://github.com/YuJunZhiXue/dsh-purge/releases/tag/${tag}"
+          echo "published https://github.com/${GITHUB_REPOSITORY}/releases/tag/${tag}"
