@@ -154,17 +154,63 @@ test("新装用户：缓存里没有 -purge 脏选择，就不注册兼容目标
   assert.equal(host.llm.listProviders().length, 1);
 });
 
-test("老用户：缓存里有 <provider>-purge 就自动补兼容目标", async () => {
-  const { mkdtempSync, writeFileSync } = await import("node:fs");
+test("老用户：缓存里有 <provider>-purge 时一次性迁回真名，不再注册可见别名", async () => {
+  const { mkdtempSync, writeFileSync, readFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
   const dir = mkdtempSync(join(tmpdir(), "purge-dirty-"));
+  const file = join(dir, "session-x.json");
   // 真实缓存是带空格格式化的 JSON，顺带覆盖这个形态
-  writeFileSync(join(dir, "session-x.json"), JSON.stringify({ record: { rows: { modelSelection: { val: { lastUsed: { provider: "demo-purge", model: "deepseek-v4.1-flash" } } } } } }, null, 2), "utf8");
+  writeFileSync(file, JSON.stringify({ record: { rows: { modelSelection: { val: { lastUsed: { provider: "demo-purge", model: "deepseek-v4.1-flash" } } } } } }, null, 2), "utf8");
   const host = fakeHost("demo");
-  installRequestShape(host.ctx, { requestShape: "auto", legacyAliasStateDir: dir });
+  const state = installRequestShape(host.ctx, { requestShape: "auto", legacyAliasStateDir: dir });
   await host.waterfall({ provider: "demo", model: "deepseek-v4.1-flash" });
-  assert.equal(host.adapters.has("demo-purge"), true, "有脏数据才补兼容目标");
+  assert.equal(host.adapters.has("demo-purge"), false, "迁干净之后不该再出现可见的 (兼容) 副本");
+  assert.deepEqual(state.state().compat, []);
+  const after = readFileSync(file, "utf8");
+  assert.match(after, /"provider": "demo"/, "缓存里的 -purge 应就地迁回真名");
+  assert.doesNotMatch(after, /demo-purge/, "缓存里不该再有 -purge 残留");
+});
+
+test("按 provider 判断：别的 provider 的 -purge 残留不连累本 provider", async () => {
+  const { mkdtempSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = mkdtempSync(join(tmpdir(), "purge-other-"));
+  writeFileSync(join(dir, "session-old.json"), JSON.stringify({ lastUsed: { provider: "demo-purge", model: "deepseek-v4.1-flash" } }, null, 2), "utf8");
+  const host = fakeHost("magpie");
+  const state = installRequestShape(host.ctx, { requestShape: "auto", legacyAliasStateDir: dir });
+  await host.waterfall({ provider: "magpie", model: "deepseek-v4.1-flash" });
+  assert.equal(host.adapters.has("magpie-purge"), false, "magpie 自己没有脏数据，不该冒出 (兼容) 副本");
+  assert.deepEqual(state.state().compat, []);
+});
+
+test("legacyAliasSources 按 provider 归组，不再是一个全局布尔", async () => {
+  const { mkdtempSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { legacyAliasSources } = await import("../lib/request-shape.js");
+  const dir = mkdtempSync(join(tmpdir(), "purge-src-"));
+  writeFileSync(join(dir, "a.json"), JSON.stringify({ x: { provider: "demo-purge" }, y: { provider: "magpie-purge" } }, null, 2), "utf8");
+  assert.deepEqual([...legacyAliasSources(dir)].sort(), ["demo", "magpie"]);
+  assert.equal(legacyAliasSources(dir).has("openai"), false);
+});
+
+test("migrateLegacyAlias 只迁指定 provider，其余残留原样保留", async () => {
+  const { mkdtempSync, writeFileSync, readFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { migrateLegacyAlias } = await import("../lib/request-shape.js");
+  const dir = mkdtempSync(join(tmpdir(), "purge-mig-"));
+  const file = join(dir, "s.json");
+  writeFileSync(file, JSON.stringify({ a: { provider: "demo-purge" }, b: { provider: "magpie-purge" } }, null, 2), "utf8");
+  assert.equal(migrateLegacyAlias(dir, "demo"), true, "demo 迁干净返回 true");
+  const after = readFileSync(file, "utf8");
+  assert.match(after, /"provider": "demo"/);
+  assert.match(after, /"provider": "magpie-purge"/, "别的 provider 的残留不动");
+  assert.equal(migrateLegacyAlias(dir, "magpie"), true);
+  assert.doesNotMatch(readFileSync(file, "utf8"), /-purge/);
+  assert.equal(migrateLegacyAlias(dir, "demo"), true, "没有残留时也算干净");
 });
 
 test("legacyAliasCompat: off 时任何情况下都不注册兼容目标", async () => {

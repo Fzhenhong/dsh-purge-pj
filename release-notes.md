@@ -1,22 +1,48 @@
+# 1.1.99
+
+## 中文
+
+- 版本 **1.1.99**。把「按 provider 判断 + 一次性自愈」的兼容别名修复**落回源码**（此前只存在于已安装副本，升级即被覆盖）。
+- **旧行为（1.1.96–1.1.98）的问题**：`hasLegacyAliasSelection()` 返回一个**全局布尔**——只要会话投影缓存里存在任意一条 `<provider>-purge`，就给**所有**在用的 provider 各注册一条「(兼容)」可见副本。于是某条早已删掉的 provider 残留，会把完全无关的 provider 也拖出一条「(兼容)」，而且永远不清。
+- **新行为**：
+  - 新增 `legacyAliasSources(dir)`：返回「谁脏」的 provider **集合**，按 provider 归组，互不连坐。
+  - 新增 `migrateLegacyAlias(dir, provider)`：把缓存里 `<provider>-purge` **就地原子迁回真名**（临时文件 + rename），迁干净就返回 true。
+  - gate 由 `state.compatWanted`（全局一次）改为 `state.compatWantedBy`（per provider）。auto 模式下先尝试自愈，迁干净就**不注册**可见别名；老会话的选择在真名下依然合法。
+  - 迁移写不进去时退回注册兼容别名，老会话照常能发（不会因为自愈失败而发不出消息）。
+- 兼容目标仍是「别名在目录里查得到 + 请求时改回真名」，老会话第一次发消息即自愈；`legacyAliasCompat: "on"` 仍可强制注册（测试用），`"off"` 仍然完全不注册。
+- **测试**：新增 4 条（按 provider 归组、只迁指定 provider、别的 provider 残留不连坐、老会话迁移后不留可见别名），并把原来「有脏数据就补兼容目标」的断言改成「迁移后不再有可见副本」。`node --test` 371 tests / 370 pass / 1 skip / 0 fail。
+
+## English
+
+- **1.1.99**. The "per-provider + one-shot self-heal" fix for the compatibility alias is now **in the source tree** (previously it only existed in the installed copy, which any upgrade overwrites).
+- **What was wrong in 1.1.96–1.1.98**: `hasLegacyAliasSelection()` returned a **single global boolean** — one leftover `<provider>-purge` entry anywhere in the session projection cache made **every** live provider register a visible "(兼容)" duplicate. A residue from a long-deleted provider therefore dragged unrelated providers into a permanent "(兼容)" entry that never cleared.
+- **New behaviour**:
+  - `legacyAliasSources(dir)` returns a **set** of the providers that are actually dirty — per provider, no collateral damage.
+  - `migrateLegacyAlias(dir, provider)` atomically rewrites `<provider>-purge` back to the real name in the cache (temp file + rename) and returns true when the residue is gone.
+  - The gate moved from `state.compatWanted` (once, global) to `state.compatWantedBy` (per provider). In auto mode we try to self-heal first; if the cache is clean afterwards, **no** visible alias is registered, and the old session's selection is legal under the real name.
+  - If the cache cannot be written, we fall back to registering the compat alias, so old sessions can still send messages.
+- The compat target still works as before ("alias resolvable in the catalog + provider rewritten back to the real name on request"), so an old session heals on its first send; `legacyAliasCompat: "on"` still forces registration (tests), `"off"` still registers nothing.
+- **Tests**: 4 added (per-provider grouping, migrate only the given provider, no collateral damage from another provider's residue, no visible alias after healing), and the old "dirty cache → register compat" assertion became "after migration no visible duplicate remains". `node --test` 371 tests / 370 pass / 1 skip / 0 fail.
+
 # 1.1.98
 
 ## 中文
 
 - 版本 **1.1.98**（文档与测试夹具调整，无功能变更）。
-- **清除本机 provider id 痕迹**：代码里本来就没有硬编码（`grep -rn "fzh" lib/ bin/ scripts/ presets/` 一直是 0），但测试夹具和升级记录里借用了本机的真实 provider 名。全部换成中性占位：
+- **清除本机 provider id 痕迹**：代码里本来就没有硬编码（`lib/ bin/ scripts/ presets/` 一直是 0 命中），但测试夹具和升级记录里借用了本机的真实 provider 名。全部换成中性占位：
   - `test/request-shape-inplace.test.mjs`：夹具 provider 由真实 id 改为 `demo` / `demo-purge`（51 处），断言的含义完全不变。
   - `release-notes.md`：1.1.92–1.1.97 条目里叙述事故时用的真实 id 改为 `demo` / `demo-purge`（25 处）。
-  - 现在仓库里 `grep -rIn "fzh" .` 为 0 命中，任何 provider 名都不会出现在代码、文档或测试里。
+  - 现在全仓按该 id 检索为 0 命中，任何 provider 名都不会出现在代码、文档或测试里。
 - **去掉日语 README**：删除 `README.ja.md`，语言导航收敛成「中文 | English」两项（`README.md` 中文为首页默认，`README.en.md` 英文）。`package.json` 的 `files` 与 `lib/update.js` 的 `COPY_NAMES` 本来就只列中英两份，无需改动。
 - **验证**：`node --test` 368 tests / 367 pass / 1 skip / 0 fail；`grep` 确认无残留学日语引用与 provider id 痕迹。
 
 ## English
 
 - **1.1.98** (documentation and test-fixture housekeeping, no behaviour change).
-- **Remove traces of the local provider id**: the code never hardcoded it (`grep -rn "fzh" lib/ bin/ scripts/ presets/` has always been 0), but the test fixtures and the changelog borrowed the real provider name from the maintainer's machine. Everything now uses neutral placeholders:
+- **Remove traces of the local provider id**: the code never hardcoded it (`lib/ bin/ scripts/ presets/` has always been 0 hits), but the test fixtures and the changelog borrowed the real provider name from the maintainer's machine. Everything now uses neutral placeholders:
   - `test/request-shape-inplace.test.mjs`: fixtures use `demo` / `demo-purge` instead of the real id (51 occurrences); the assertions are unchanged.
   - `release-notes.md`: the incident write-ups in 1.1.92–1.1.97 now use `demo` / `demo-purge` (25 occurrences).
-  - `grep -rIn "fzh" .` is now 0 hits — no provider name appears in code, docs or tests.
+  - a repo-wide `grep -rIn` for that id is now 0 hits — no provider name appears in code, docs or tests.
 - **Drop the Japanese README**: `README.ja.md` is removed and the language switcher is down to 中文 | English (`README.md` is the Chinese default GitHub renders, `README.en.md` is English). `package.json`'s `files` and `lib/update.js`'s `COPY_NAMES` already listed only the two, so nothing else changes.
 - **Verified**: `node --test` 368 tests / 367 pass / 1 skip / 0 fail; `grep` confirms no leftover Japanese references and no provider-id traces.
 
