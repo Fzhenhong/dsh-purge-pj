@@ -174,3 +174,17 @@ test("legacyAliasCompat: off 时任何情况下都不注册兼容目标", async 
   assert.equal(host.adapters.has("fzh-purge"), false);
   assert.deepEqual(state.state().compat, []);
 });
+
+test("provider 名不写死：换任何 id（openai）都走同一条原地替换路径", async () => {
+  const host = fakeHost("openai");
+  const state = installRequestShape(host.ctx, { requestShape: "auto", legacyAliasCompat: "on" });
+  const out = await host.waterfall({ provider: "openai", model: "gpt-x" });
+  assert.equal(out.provider, "openai", "不允许出现 openai-purge 这种改写");
+  assert.equal(host.llm.registration("openai").adapter === host.real, false, "真 provider 上挂的是代理");
+  const models = await host.llm.registration("openai").adapter.listModels("openai");
+  assert.ok(models.some((m) => m.id === "deepseek-v4.1-flash"), "模型目录照旧可见");
+  await host.waterfall({ provider: "openai", model: "gpt-x" });
+  assert.ok(host.llm.listProviders().some((p) => p.id === "openai-purge"), "兼容目标跟着 provider 走");
+  assert.deepEqual(state.state().compat, ["openai-purge"]);
+  assert.equal(state.state().aliases.includes("openai"), true);
+});
