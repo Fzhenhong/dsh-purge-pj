@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+  # fork 仓库的 push 事件不一定拉起 Actions，留一个手动入口。
+  workflow_dispatch:
 
 permissions:
   contents: write
